@@ -34,6 +34,7 @@
       height: 100%;
       display: flex;
       flex-direction: column;
+      background-color: var(--bg-color);
     }
 
     .hide-in-game {
@@ -195,7 +196,6 @@
     .card img { width: 100%; height: 75%; object-fit: cover; }
     .card span { height: 25%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.7rem; color: var(--text-main); }
     
-    /* Custom Mode Styles */
     .card.custom-unselected { opacity: 0.3; filter: grayscale(80%); }
     .card.custom-selected { border-color: #38ef7d; }
     .card.custom-selected::after {
@@ -235,6 +235,41 @@
     #win-screen button { background: var(--accent-custom); }
     
     .player-list-item { background: #2d3748; margin: 5px auto; padding: 10px; border-radius: 8px; font-weight: bold; }
+
+    /* === NEU: Spezifische PC Optimierung === */
+    @media (min-width: 800px) {
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #050505; /* Verdunkelt den Hintergrund außerhalb der App */
+      }
+      .container {
+        width: 95vw;
+        height: 90vh;
+        max-width: 1100px;
+        max-height: 800px;
+        border-radius: 16px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+        border: 1px solid var(--border-color);
+        position: relative;
+      }
+      .card span {
+        font-size: 1.1rem; /* Größere Schrift für Namen auf dem PC */
+      }
+      #board {
+        gap: 12px;
+        padding: 12px;
+        border-radius: 0 0 16px 16px;
+      }
+      #game-header {
+        height: 80px;
+        border-radius: 16px 16px 0 0;
+      }
+      #opponent-target-display p { font-size: 0.9rem; }
+      #opponent-target-content span { font-size: 1.2rem; }
+      #opponent-target-content img { height: 50px; width: 50px; }
+    }
   </style>
 </head>
 <body>
@@ -297,7 +332,7 @@
     const channel = pusher.subscribe('private-game-room');
     
     const SUPABASE_URL = 'https://vqqtiskjqyemzhelmqki.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxcXRpc2tqcXllbXpoZWxtcWkiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc4NjA3OTI2NCwiZXhwIjoyMTAxNjU1MjY0f.-bofHdro5SOiXVioD4eJkSl69_qiMj2ExCCnhb0TKSQ';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxcXRpc2tqcXllbXpoZWxtcWtpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYwNzkyNjQsImV4cCI6MjEwMTY1NTI2NH0.-bofHdro5SOiXVioD4eJkSl69_qiMj2ExCCnhb0TKSQ';
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let myName = '';
@@ -349,7 +384,6 @@
       switchView('view-setup');
     };
 
-    // Ändert von "input" auf "change" um Lags und Datenbank-Spam zu verhindern
     document.getElementById('player-name').addEventListener('change', (e) => {
       const name = e.target.value.trim();
       if (selectedMode === 'custom' && name) {
