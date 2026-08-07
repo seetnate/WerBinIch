@@ -232,7 +232,7 @@
     
     const SUPABASE_URL = 'https://vqqtiskjqyemzhelmqki.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxcXRpc2tqcXllbXpoZWxtcWkiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc4NjA3OTI2NCwiZXhwIjoyMTAxNjU1MjY0f.-bofHdro5SOiXVioD4eJkSl69_qiMj2ExCCnhb0TKSQ';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let myName = '';
     let selectedMode = ''; 
