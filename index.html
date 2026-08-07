@@ -131,7 +131,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      height: 10vh; 
+      height: 15vh; 
       background: var(--card-bg);
       border-bottom: 1px solid var(--border-color);
       padding: 0 10px;
@@ -159,7 +159,15 @@
     
     #opponent-target-display p { margin: 0; color: #38ef7d; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; }
     #opponent-target-content { display: flex; align-items: center; gap: 8px; }
-    #opponent-target-content img { height: 6vh; width: 6vh; object-fit: cover; border-radius: 50%; }
+    
+    #opponent-target-content img { 
+      height: 10vh; 
+      aspect-ratio: 4 / 5; 
+      object-fit: cover; 
+      border-radius: 4px; 
+      border: 1px solid var(--border-color);
+    }
+    
     #opponent-target-content span { font-size: 0.8rem; font-weight: bold; }
 
     #board {
@@ -236,13 +244,13 @@
     
     .player-list-item { background: #2d3748; margin: 5px auto; padding: 10px; border-radius: 8px; font-weight: bold; }
 
-    /* === NEU: Spezifische PC Optimierung === */
+    /* PC Optimierung */
     @media (min-width: 800px) {
       body {
         display: flex;
         align-items: center;
         justify-content: center;
-        background-color: #050505; /* Verdunkelt den Hintergrund außerhalb der App */
+        background-color: #050505; 
       }
       .container {
         width: 95vw;
@@ -255,7 +263,7 @@
         position: relative;
       }
       .card span {
-        font-size: 1.1rem; /* Größere Schrift für Namen auf dem PC */
+        font-size: 1.1rem; 
       }
       #board {
         gap: 12px;
@@ -263,12 +271,15 @@
         border-radius: 0 0 16px 16px;
       }
       #game-header {
-        height: 80px;
+        height: 130px; 
         border-radius: 16px 16px 0 0;
       }
       #opponent-target-display p { font-size: 0.9rem; }
       #opponent-target-content span { font-size: 1.2rem; }
-      #opponent-target-content img { height: 50px; width: 50px; }
+      #opponent-target-content img { 
+        height: 100px; 
+        width: auto;
+      }
     }
   </style>
 </head>
@@ -332,7 +343,8 @@
     const channel = pusher.subscribe('private-game-room');
     
     const SUPABASE_URL = 'https://vqqtiskjqyemzhelmqki.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxcXRpc2tqcXllbXpoZWxtcWtpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYwNzkyNjQsImV4cCI6MjEwMTY1NTI2NH0.-bofHdro5SOiXVioD4eJkSl69_qiMj2ExCCnhb0TKSQ';
+    // TRAGE HIER DEINEN RICHTIGEN KEY EIN:
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxcXRpc2tqcXllbXpoZWxtcWkiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc4NjA3OTI2NCwiZXhwIjoyMTAxNjU1MjY0f.-bofHdro5SOiXVioD4eJkSl69_qiMj2ExCCnhb0TKSQ'; 
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let myName = '';
@@ -441,7 +453,7 @@
       
       if (error) {
         console.error("Speicher-Fehler:", error.message);
-        alert("Fehler beim Speichern in der Datenbank: " + error.message + "\n\nPrüfe, ob die RLS-Richtlinien deaktiviert sind.");
+        alert("Fehler beim Speichern in der Datenbank: " + error.message + "\n\nPrüfe deinen API-Key und die RLS-Richtlinien.");
       }
     }
 
