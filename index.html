@@ -59,6 +59,7 @@
 
     button:hover { transform: translateY(-2px); opacity: 0.9; }
     button:active { transform: translateY(0); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .btn-basic { background: var(--accent-basic); }
     .btn-custom { background: var(--accent-custom); }
@@ -179,8 +180,11 @@
       align-items: center;
       justify-content: center;
     }
-    #win-screen h1 { font-size: 4rem; color: #38ef7d; margin-bottom: 1.5rem; text-transform: uppercase; letter-spacing: 2px; }
+    #win-screen h1 { font-size: 4rem; color: #38ef7d; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 2px; }
+    #win-screen h2 { font-size: 2rem; color: white; margin-bottom: 1.5rem; }
     #win-screen button { background: var(--accent-custom); font-size: 1.2rem; padding: 1rem 2.5rem; }
+    
+    .player-list-item { background: #2d3748; margin: 5px auto; padding: 10px; border-radius: 8px; max-width: 300px; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -204,15 +208,24 @@
           <div class="grid" id="custom-grid"></div>
         </div>
 
-        <button class="btn-action" id="btn-start-game">Spiel beitreten</button>
+        <button class="btn-action" id="btn-join-lobby">Lobby beitreten</button>
+      </div>
+    </div>
+
+    <div id="view-lobby" class="view">
+      <div class="setup-card">
+        <h2 style="margin-top:0;">Lobby</h2>
+        <div id="lobby-status" style="margin-bottom: 15px; color: var(--text-muted);">Verbinde...</div>
+        <ul id="player-list" style="list-style: none; padding: 0;"></ul>
+        <button class="btn-action" id="btn-start-multiplayer" style="display:none;">Spiel starten</button>
       </div>
     </div>
 
     <div id="view-game" class="view">
-      <div id="status-bar">Warte auf Gegner...</div>
+      <div id="status-bar">Warte auf Zuweisung...</div>
       
       <div id="opponent-target-display">
-        <p style="margin: 0 0 5px 0; color: #38ef7d; font-size: 0.75rem; font-weight: bold; text-transform: uppercase;">Gegner sucht:</p>
+        <p style="margin: 0 0 5px 0; color: #38ef7d; font-size: 0.75rem; font-weight: bold; text-transform: uppercase;">Du suchst:</p>
         <div id="opponent-target-content"></div>
       </div>
 
@@ -222,11 +235,11 @@
 
   <div id="win-screen">
     <h1>Gewonnen!</h1>
-    <button id="btn-restart">Neue Runde</button>
+    <h2 id="winner-name-display"></h2>
+    <button id="btn-restart" style="display:none;">Neue Runde (Nur Host)</button>
   </div>
 
   <script>
-    // VERCEL UPDATE: authEndpoint auf /api/auth angepasst
     const pusher = new Pusher('3df7da082bcfbaaacad9', { cluster: 'eu', authEndpoint: '/api/auth' });
     const channel = pusher.subscribe('private-game-room');
     
@@ -237,18 +250,16 @@
     let myName = '';
     let selectedMode = ''; 
     let myPool = [];
-    let opponentPool = [];
-    
-    let myTargetItem = null;
-    let opponentTargetItem = null;
-
-    let gamePhase = 'waiting'; 
-    let iHaveSelected = false;
-    let opponentHasSelected = false;
-
     let allBasicFiles = [];
 
-    // VERCEL UPDATE: Fetch auf /api/getImages angepasst
+    // Multiplayer State
+    let players = [];
+    let isHost = false;
+    let myAssignment = null; 
+    let myTargetItem = null;
+    let selectionsReady = 0;
+    let gamePhase = 'waiting';
+
     fetch('/api/getImages')
       .then(res => res.json())
       .then(files => {
@@ -284,22 +295,20 @@
     });
 
     async function loadUserCustomSelection(name) {
-      const { data } = await supabase
+      const { data } = await supabaseClient
         .from('user_selections')
         .select('selected_images')
         .eq('player_name', name)
         .single();
 
       const selectedSet = data ? data.selected_images : [...allBasicFiles];
-
       const grid = document.getElementById('custom-grid');
       grid.innerHTML = '';
 
       allBasicFiles.forEach(file => {
         const div = document.createElement('div');
         div.className = 'card';
-        const isSelected = selectedSet.includes(file);
-        if (!isSelected) div.classList.add('custom-unselected');
+        if (!selectedSet.includes(file)) div.classList.add('custom-unselected');
 
         div.innerHTML = getCardHTML(file);
         div.addEventListener('click', () => {
@@ -318,10 +327,7 @@
           selectedFiles.push(allBasicFiles[index]);
         }
       });
-      
-      await supabase
-        .from('user_selections')
-        .upsert({ player_name: name, selected_images: selectedFiles });
+      await supabaseClient.from('user_selections').upsert({ player_name: name, selected_images: selectedFiles });
     }
 
     function shuffleArray(array) {
@@ -340,14 +346,13 @@
       if (mode === 'basic') {
         return shuffleArray([...allBasicFiles]).slice(0, 20);
       } else {
-        const { data } = await supabase
+        const { data } = await supabaseClient
           .from('user_selections')
           .select('selected_images')
           .eq('player_name', myName)
           .single();
 
         let userSelected = data ? data.selected_images : [...allBasicFiles];
-        
         shuffleArray(userSelected);
 
         if (userSelected.length >= 20) {
@@ -360,22 +365,6 @@
         }
       }
     }
-
-    document.getElementById('btn-start-game').addEventListener('click', async () => {
-      const nameInput = document.getElementById('player-name').value.trim();
-      if (!nameInput) return alert('Bitte Namen eingeben');
-      if (allBasicFiles.length < 20) return alert('Mindestens 20 Bilder in der Datenbank nötig!');
-
-      myName = nameInput;
-      if (selectedMode === 'custom') {
-        await saveUserCustomSelection(myName);
-      }
-
-      myPool = await generatePool(selectedMode);
-      
-      switchView('view-game');
-      channel.trigger('client-ready', { name: myName, pool: myPool });
-    });
 
     function getCardHTML(item) {
       if (item.toLowerCase().match(/\.(jpg|jpeg|png)$/)) {
@@ -396,23 +385,127 @@
         div.innerHTML = getCardHTML(item);
 
         if (clickable) {
-          div.addEventListener('click', () => handleCardClick(div, index));
+          div.addEventListener('click', () => handleCardClick(div, index, item));
         }
         board.appendChild(div);
       });
     }
 
-    function handleCardClick(cardElement, index) {
+    function setStatus(text) { document.getElementById('status-bar').innerText = text; }
+
+    // --- MULTIPLAYER LOBBY LOGIK ---
+
+    document.getElementById('btn-join-lobby').addEventListener('click', async () => {
+      const nameInput = document.getElementById('player-name').value.trim();
+      if (!nameInput) return alert('Bitte Namen eingeben');
+      if (allBasicFiles.length < 20) return alert('Mindestens 20 Bilder in der Datenbank nötig!');
+
+      myName = nameInput;
+      if (selectedMode === 'custom') await saveUserCustomSelection(myName);
+      myPool = await generatePool(selectedMode);
+      
+      players = [{ name: myName, pool: myPool }];
+      isHost = true; // Wir nehmen an, wir sind der erste, bis jemand anderes antwortet
+      
+      switchView('view-lobby');
+      updateLobbyUI();
+      
+      channel.trigger('client-join', { name: myName, pool: myPool });
+      
+      setTimeout(() => {
+        if (isHost && players.length >= 2) {
+            document.getElementById('btn-start-multiplayer').style.display = 'block';
+        }
+      }, 1500);
+    });
+
+    function updateLobbyUI() {
+      const list = document.getElementById('player-list');
+      list.innerHTML = '';
+      players.forEach(p => {
+        const li = document.createElement('li');
+        li.className = 'player-list-item';
+        li.innerText = p.name + (p.name === myName ? " (Du)" : "");
+        list.appendChild(li);
+      });
+      
+      document.getElementById('lobby-status').innerText = `Spieler in Lobby: ${players.length}`;
+      
+      if (isHost && players.length >= 2) {
+         document.getElementById('btn-start-multiplayer').style.display = 'block';
+      } else {
+         document.getElementById('btn-start-multiplayer').style.display = 'none';
+      }
+    }
+
+    // Andere Spieler treten bei
+    channel.bind('client-join', (data) => {
+      if (!players.find(p => p.name === data.name)) {
+        players.push(data);
+        updateLobbyUI();
+      }
+      if (isHost) {
+        channel.trigger('client-sync-lobby', { players: players });
+      }
+    });
+
+    // Host synchronisiert die Lobby für Neueinsteiger
+    channel.bind('client-sync-lobby', (data) => {
+      isHost = false; 
+      players = data.players;
+      updateLobbyUI();
+    });
+
+    // --- SPIELSTART & ZUWEISUNG ---
+
+    document.getElementById('btn-start-multiplayer').addEventListener('click', () => {
+      if (players.length < 2) return alert('Mindestens 2 Spieler erforderlich.');
+      
+      // Ring-Tausch Zuweisung generieren
+      let assignments = [];
+      let shuffledPlayers = shuffleArray([...players]);
+      
+      for (let i = 0; i < shuffledPlayers.length; i++) {
+        let picker = shuffledPlayers[i];
+        let guesser = shuffledPlayers[(i + 1) % shuffledPlayers.length];
+        
+        assignments.push({
+          pickerName: picker.name,
+          guesserName: guesser.name,
+          guesserPool: guesser.pool
+        });
+      }
+      
+      channel.trigger('client-start-selection', { assignments });
+      startSelectionPhase(assignments);
+    });
+
+    channel.bind('client-start-selection', (data) => {
+      startSelectionPhase(data.assignments);
+    });
+
+    function startSelectionPhase(assignments) {
+      myAssignment = assignments.find(a => a.pickerName === myName);
+      gamePhase = 'selecting';
+      selectionsReady = 0;
+      
+      switchView('view-game');
+      setStatus(`Wähle eine Karte aus, die ${myAssignment.guesserName} erraten muss!`);
+      renderBoard(myAssignment.guesserPool);
+    }
+
+    function handleCardClick(cardElement, index, item) {
       if (gamePhase === 'selecting') {
         document.querySelectorAll('.card').forEach(c => c.style.pointerEvents = 'none');
         cardElement.classList.add('selected-target');
-        setStatus('Warte auf Gegner...');
+        setStatus('Warte, bis alle Spieler gewählt haben...');
         
-        opponentTargetItem = opponentPool[index];
-        iHaveSelected = true;
+        channel.trigger('client-target-selected', { 
+            guesserName: myAssignment.guesserName, 
+            targetItem: item 
+        });
         
-        channel.trigger('client-target-selected', { by: myName, targetItem: opponentTargetItem });
-        checkGameStart();
+        processSelection({ guesserName: myAssignment.guesserName, targetItem: item });
         
       } else if (gamePhase === 'playing') {
         if (!cardElement.classList.contains('eliminated')) {
@@ -424,6 +517,32 @@
       }
     }
 
+    channel.bind('client-target-selected', (data) => {
+      processSelection(data);
+    });
+
+    function processSelection(data) {
+      selectionsReady++;
+      
+      if (data.guesserName === myName) {
+        myTargetItem = data.targetItem;
+      }
+      
+      if (selectionsReady === players.length) {
+        startGamePhase();
+      }
+    }
+
+    function startGamePhase() {
+      gamePhase = 'playing';
+      setStatus('Das Spiel beginnt! Finde deine Karte.');
+      
+      renderBoard(myPool);
+      
+      document.getElementById('opponent-target-display').style.display = 'block';
+      document.getElementById('opponent-target-content').innerHTML = getCardHTML(myTargetItem);
+    }
+
     function checkWinCondition() {
       const remainingCards = document.querySelectorAll('.card:not(.eliminated)');
       if (remainingCards.length === 1) {
@@ -431,29 +550,43 @@
         const remainingItem = myPool[remainingIndex];
         
         if (remainingItem === myTargetItem) {
-          document.getElementById('win-screen').style.display = 'flex';
+          channel.trigger('client-winner', { name: myName });
+          showWinScreen(myName);
         }
       }
     }
 
-    function setStatus(text) { document.getElementById('status-bar').innerText = text; }
+    channel.bind('client-winner', (data) => {
+      showWinScreen(data.name);
+    });
+
+    function showWinScreen(winnerName) {
+      document.getElementById('win-screen').style.display = 'flex';
+      document.getElementById('winner-name-display').innerText = `${winnerName} hat gewonnen!`;
+      
+      if (isHost) {
+        document.getElementById('btn-restart').style.display = 'block';
+      }
+    }
+
+    // --- NEUSTART ---
 
     document.getElementById('btn-restart').addEventListener('click', () => {
       channel.trigger('client-restart', {});
-      startNewRound();
+      resetGameToLobby();
     });
 
     channel.bind('client-restart', () => {
-      startNewRound();
+      resetGameToLobby();
     });
 
-    async function startNewRound() {
+    async function resetGameToLobby() {
       document.getElementById('win-screen').style.display = 'none';
+      document.getElementById('btn-restart').style.display = 'none';
       
       myTargetItem = null;
-      opponentTargetItem = null;
-      iHaveSelected = false;
-      opponentHasSelected = false;
+      myAssignment = null;
+      selectionsReady = 0;
       gamePhase = 'waiting';
       
       document.getElementById('opponent-target-display').style.display = 'none';
@@ -461,44 +594,15 @@
       
       myPool = await generatePool(selectedMode);
       
-      setStatus('Neue Runde gestartet! Warte auf Gegner...');
-      channel.trigger('client-ready', { name: myName, pool: myPool });
-    }
-
-    channel.bind('client-ready', (data) => {
-      if (data.name !== myName) {
-        opponentPool = data.pool;
-        gamePhase = 'selecting';
-        setStatus(`Wähle eine Person, die ${data.name} erraten muss!`);
-        renderBoard(opponentPool);
-        channel.trigger('client-already-here', { name: myName, pool: myPool });
-      }
-    });
-
-    channel.bind('client-already-here', (data) => {
-      opponentPool = data.pool;
-      gamePhase = 'selecting';
-      setStatus(`Wähle eine Person, die ${data.name} erraten muss!`);
-      renderBoard(opponentPool);
-    });
-
-    channel.bind('client-target-selected', (data) => {
-      if (data.by !== myName) {
-        opponentHasSelected = true;
-        myTargetItem = data.targetItem; 
-      }
-      checkGameStart();
-    });
-
-    function checkGameStart() {
-      if (iHaveSelected && opponentHasSelected) {
-        gamePhase = 'playing';
-        setStatus('Das Spiel beginnt! (1 verbleibende Karte ist dein Tipp)');
-        
-        renderBoard(myPool);
-        
-        document.getElementById('opponent-target-display').style.display = 'block';
-        document.getElementById('opponent-target-content').innerHTML = getCardHTML(opponentTargetItem);
+      // Update eigenen Pool in der Spielerliste
+      let me = players.find(p => p.name === myName);
+      if(me) me.pool = myPool;
+      
+      switchView('view-lobby');
+      updateLobbyUI();
+      
+      if (isHost) {
+        channel.trigger('client-sync-lobby', { players: players });
       }
     }
   </script>
