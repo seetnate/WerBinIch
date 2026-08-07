@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/getImages.js": {
+      "includeFiles": "Bilder/**"
+    }
+  }
+}
