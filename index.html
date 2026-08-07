@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Wer ist es?</title>
+  <script src="https://js.pusher.com/8.0/pusher.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg-color: #0f1015;
+      --card-bg: #181a24;
+      --accent-basic: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --accent-custom: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      --accent-green: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      --text-main: #ffffff;
+      --text-muted: #a0aec0;
+      --border-color: #2d3748;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #fff 0%, #a0aec0 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 2rem;
+    }
+
+    h2, h3 { color: #e2e8f0; }
+
+    button {
+      border: none;
+      color: white;
+      padding: 1rem 2rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: transform 0.2s, opacity 0.2s;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      margin: 0.5rem;
+    }
+
+    button:hover { transform: translateY(-2px); opacity: 0.9; }
+    button:active { transform: translateY(0); }
+
+    .btn-basic { background: var(--accent-basic); }
+    .btn-custom { background: var(--accent-custom); }
+    .btn-action { background: var(--accent-green); width: 100%; max-width: 320px; margin: 1.5rem 0; }
+
+    input {
+      background: var(--card-bg);
+      border: 2px solid var(--border-color);
+      color: white;
+      padding: 0.9rem 1rem;
+      font-size: 1rem;
+      border-radius: 10px;
+      width: 100%;
+      max-width: 300px;
+      margin-bottom: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus { border-color: #667eea; }
+
+    .view { display: none; animation: fadeIn 0.3s ease-in-out; }
+    .active-view { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    #view-mode-select {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 1rem;
+      background: var(--card-bg);
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    #view-mode-select button { width: 100%; max-width: 325px; }
+
+    .setup-card {
+      background: var(--card-bg);
+      padding: 2rem;
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      margin-bottom: 2rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      margin-top: 1rem;
+    }
+    @media (max-width: 600px) { .grid { grid-template-columns: repeat(4, 1fr); } }
+
+    .card {
+      background-color: var(--card-bg);
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      cursor: pointer;
+      aspect-ratio: 4 / 5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      overflow: hidden;
+      position: relative;
+      transition: all 0.2s;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    }
+    .card img { width: 100%; height: 80%; object-fit: cover; border-bottom: 2px solid var(--border-color); }
+    .card span { height: 20%; display: flex; align-items: center; justify-content: center; padding: 0 4px; font-weight: 600; font-size: 0.85rem; word-break: break-word; text-align: center; color: var(--text-main); }
+    
+    .card:hover { border-color: #667eea; transform: translateY(-2px); }
+    
+    .card.custom-unselected { opacity: 0.3; filter: grayscale(80%); }
+
+    .eliminated { opacity: 0.25; filter: grayscale(100%); transform: scale(0.96); border-color: #1a1a1a; }
+    .selected-target { border-color: #38ef7d !important; box-shadow: 0 0 20px rgba(56, 239, 125, 0.4); pointer-events: none; }
+
+    #status-bar {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      padding: 12px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      font-weight: 600;
+      font-size: 1.05rem;
+    }
+
+    #opponent-target-display {
+      display: none;
+      background: var(--card-bg);
+      border: 2px solid #38ef7d;
+      border-radius: 12px;
+      padding: 10px;
+      margin: 0 auto 20px auto;
+      max-width: 160px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+    #opponent-target-display img { width: 100%; height: 120px; object-fit: cover; border-radius: 8px; border-bottom: 2px solid var(--border-color); }
+    #opponent-target-display span { font-weight: 600; font-size: 0.9rem; display: block; margin-top: 5px; }
+
+    #win-screen {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: rgba(15, 16, 21, 0.95);
+      z-index: 999;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    #win-screen h1 { font-size: 4rem; color: #38ef7d; margin-bottom: 1.5rem; text-transform: uppercase; letter-spacing: 2px; }
+    #win-screen button { background: var(--accent-custom); font-size: 1.2rem; padding: 1rem 2.5rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Wer ist es?</h1>
+
+    <div id="view-mode-select" class="view active-view">
+      <h2 style="margin-top:0;">Wähle Modus</h2>
+      <button class="btn-basic" onclick="selectMode('basic')">Basic</button>
+      <button class="btn-custom" onclick="selectMode('custom')">Custom</button>
+    </div>
+
+    <div id="view-setup" class="view">
+      <div class="setup-card">
+        <h2 id="setup-title" style="margin-top:0;">Dein Profil</h2>
+        <input type="text" id="player-name" placeholder="Dein Name" autocomplete="off" /><br>
+        
+        <div id="custom-selection-container" style="display:none; margin-top: 1.5rem;">
+          <h3>Wähle die Personen aus, die du kennst:</h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem;">Klicke auf die Karten zum Auswählen.</p>
+          <div class="grid" id="custom-grid"></div>
+        </div>
+
+        <button class="btn-action" id="btn-start-game">Spiel beitreten</button>
+      </div>
+    </div>
+
+    <div id="view-game" class="view">
+      <div id="status-bar">Warte auf Gegner...</div>
+      
+      <div id="opponent-target-display">
+        <p style="margin: 0 0 5px 0; color: #38ef7d; font-size: 0.75rem; font-weight: bold; text-transform: uppercase;">Gegner sucht:</p>
+        <div id="opponent-target-content"></div>
+      </div>
+
+      <div class="grid" id="board"></div>
+    </div>
+  </div>
+
+  <div id="win-screen">
+    <h1>Gewonnen!</h1>
+    <button id="btn-restart">Neue Runde</button>
+  </div>
+
+  <script>
+    const pusher = new Pusher('3df7da082bcfbaaacad9', { cluster: 'eu', authEndpoint: '.netlify/functions/auth' });
+    const channel = pusher.subscribe('private-game-room');
+    
+    const SUPABASE_URL = 'https://vqqtiskjqyemzhelmqki.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxcXRpc2tqcXllbXpoZWxtcWkiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc4NjA3OTI2NCwiZXhwIjoyMTAxNjU1MjY0f.-bofHdro5SOiXVioD4eJkSl69_qiMj2ExCCnhb0TKSQ';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let myName = '';
+    let selectedMode = ''; 
+    let myPool = [];
+    let opponentPool = [];
+    
+    let myTargetItem = null;
+    let opponentTargetItem = null;
+
+    let gamePhase = 'waiting'; 
+    let iHaveSelected = false;
+    let opponentHasSelected = false;
+
+    let allBasicFiles = [];
+
+    fetch('/.netlify/functions/getImages')
+      .then(res => res.json())
+      .then(files => {
+        if (files.error) return console.error(files.error);
+        allBasicFiles = files.map(file => `Bilder/${file}`);
+      })
+      .catch(err => console.error("Fehler:", err));
+
+    function switchView(viewId) {
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active-view'));
+      document.getElementById(viewId).classList.add('active-view');
+    }
+
+    window.selectMode = function(mode) {
+      selectedMode = mode;
+      const customContainer = document.getElementById('custom-selection-container');
+      
+      if (mode === 'custom') {
+        customContainer.style.display = 'block';
+        document.getElementById('setup-title').innerText = 'Custom Modus';
+      } else {
+        customContainer.style.display = 'none';
+        document.getElementById('setup-title').innerText = 'Basic Modus';
+      }
+      switchView('view-setup');
+    };
+
+    document.getElementById('player-name').addEventListener('input', (e) => {
+      const name = e.target.value.trim();
+      if (selectedMode === 'custom' && name) {
+        loadUserCustomSelection(name);
+      }
+    });
+
+    async function loadUserCustomSelection(name) {
+      const { data } = await supabase
+        .from('user_selections')
+        .select('selected_images')
+        .eq('player_name', name)
+        .single();
+
+      const selectedSet = data ? data.selected_images : [...allBasicFiles];
+
+      const grid = document.getElementById('custom-grid');
+      grid.innerHTML = '';
+
+      allBasicFiles.forEach(file => {
+        const div = document.createElement('div');
+        div.className = 'card';
+        const isSelected = selectedSet.includes(file);
+        if (!isSelected) div.classList.add('custom-unselected');
+
+        div.innerHTML = getCardHTML(file);
+        div.addEventListener('click', () => {
+          div.classList.toggle('custom-unselected');
+          saveUserCustomSelection(name);
+        });
+        grid.appendChild(div);
+      });
+    }
+
+    async function saveUserCustomSelection(name) {
+      const gridCards = document.querySelectorAll('#custom-grid .card');
+      const selectedFiles = [];
+      gridCards.forEach((card, index) => {
+        if (!card.classList.contains('custom-unselected')) {
+          selectedFiles.push(allBasicFiles[index]);
+        }
+      });
+      
+      await supabase
+        .from('user_selections')
+        .upsert({ player_name: name, selected_images: selectedFiles });
+    }
+
+    function shuffleArray(array) {
+      let curId = array.length;
+      while (0 !== curId) {
+        let randId = Math.floor(Math.random() * curId);
+        curId -= 1;
+        let tmp = array[curId];
+        array[curId] = array[randId];
+        array[randId] = tmp;
+      }
+      return array;
+    }
+
+    async function generatePool(mode) {
+      if (mode === 'basic') {
+        return shuffleArray([...allBasicFiles]).slice(0, 20);
+      } else {
+        const { data } = await supabase
+          .from('user_selections')
+          .select('selected_images')
+          .eq('player_name', myName)
+          .single();
+
+        let userSelected = data ? data.selected_images : [...allBasicFiles];
+        
+        shuffleArray(userSelected);
+
+        if (userSelected.length >= 20) {
+          return userSelected.slice(0, 20);
+        } else {
+          const remaining = allBasicFiles.filter(f => !userSelected.includes(f));
+          shuffleArray(remaining);
+          const needed = 20 - userSelected.length;
+          return [...userSelected, ...remaining.slice(0, needed)];
+        }
+      }
+    }
+
+    document.getElementById('btn-start-game').addEventListener('click', async () => {
+      const nameInput = document.getElementById('player-name').value.trim();
+      if (!nameInput) return alert('Bitte Namen eingeben');
+      if (allBasicFiles.length < 20) return alert('Mindestens 20 Bilder in der Datenbank nötig!');
+
+      myName = nameInput;
+      if (selectedMode === 'custom') {
+        await saveUserCustomSelection(myName);
+      }
+
+      myPool = await generatePool(selectedMode);
+      
+      switchView('view-game');
+      channel.trigger('client-ready', { name: myName, pool: myPool });
+    });
+
+    function getCardHTML(item) {
+      if (item.toLowerCase().match(/\.(jpg|jpeg|png)$/)) {
+        const name = item.split('/').pop().split('.')[0];
+        return `<img src="${item}" alt="${name}"><span>${name}</span>`;
+      }
+      return `<span>${item}</span>`;
+    }
+
+    function renderBoard(poolToRender, clickable = true) {
+      const board = document.getElementById('board');
+      board.innerHTML = '';
+      
+      poolToRender.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.dataset.index = index;
+        div.innerHTML = getCardHTML(item);
+
+        if (clickable) {
+          div.addEventListener('click', () => handleCardClick(div, index));
+        }
+        board.appendChild(div);
+      });
+    }
+
+    function handleCardClick(cardElement, index) {
+      if (gamePhase === 'selecting') {
+        document.querySelectorAll('.card').forEach(c => c.style.pointerEvents = 'none');
+        cardElement.classList.add('selected-target');
+        setStatus('Warte auf Gegner...');
+        
+        opponentTargetItem = opponentPool[index];
+        iHaveSelected = true;
+        
+        channel.trigger('client-target-selected', { by: myName, targetItem: opponentTargetItem });
+        checkGameStart();
+        
+      } else if (gamePhase === 'playing') {
+        if (!cardElement.classList.contains('eliminated')) {
+          cardElement.classList.add('eliminated');
+          checkWinCondition();
+        } else {
+          cardElement.classList.remove('eliminated'); 
+        }
+      }
+    }
+
+    function checkWinCondition() {
+      const remainingCards = document.querySelectorAll('.card:not(.eliminated)');
+      if (remainingCards.length === 1) {
+        const remainingIndex = parseInt(remainingCards[0].dataset.index);
+        const remainingItem = myPool[remainingIndex];
+        
+        if (remainingItem === myTargetItem) {
+          document.getElementById('win-screen').style.display = 'flex';
+        }
+      }
+    }
+
+    function setStatus(text) { document.getElementById('status-bar').innerText = text; }
+
+    document.getElementById('btn-restart').addEventListener('click', () => {
+      channel.trigger('client-restart', {});
+      startNewRound();
+    });
+
+    channel.bind('client-restart', () => {
+      startNewRound();
+    });
+
+    async function startNewRound() {
+      document.getElementById('win-screen').style.display = 'none';
+      
+      myTargetItem = null;
+      opponentTargetItem = null;
+      iHaveSelected = false;
+      opponentHasSelected = false;
+      gamePhase = 'waiting';
+      
+      document.getElementById('opponent-target-display').style.display = 'none';
+      document.getElementById('board').innerHTML = '';
+      
+      myPool = await generatePool(selectedMode);
+      
+      setStatus('Neue Runde gestartet! Warte auf Gegner...');
+      channel.trigger('client-ready', { name: myName, pool: myPool });
+    }
+
+    channel.bind('client-ready', (data) => {
+      if (data.name !== myName) {
+        opponentPool = data.pool;
+        gamePhase = 'selecting';
+        setStatus(`Wähle eine Person, die ${data.name} erraten muss!`);
+        renderBoard(opponentPool);
+        channel.trigger('client-already-here', { name: myName, pool: myPool });
+      }
+    });
+
+    channel.bind('client-already-here', (data) => {
+      opponentPool = data.pool;
+      gamePhase = 'selecting';
+      setStatus(`Wähle eine Person, die ${data.name} erraten muss!`);
+      renderBoard(opponentPool);
+    });
+
+    channel.bind('client-target-selected', (data) => {
+      if (data.by !== myName) {
+        opponentHasSelected = true;
+        myTargetItem = data.targetItem; 
+      }
+      checkGameStart();
+    });
+
+    function checkGameStart() {
+      if (iHaveSelected && opponentHasSelected) {
+        gamePhase = 'playing';
+        setStatus('Das Spiel beginnt! (1 verbleibende Karte ist dein Tipp)');
+        
+        renderBoard(myPool);
+        
+        document.getElementById('opponent-target-display').style.display = 'block';
+        document.getElementById('opponent-target-content').innerHTML = getCardHTML(opponentTargetItem);
+      }
+    }
+  </script>
+</body>
+</html>
