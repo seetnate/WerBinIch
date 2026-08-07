@@ -31,6 +31,20 @@
       width: 100%;
       max-width: 900px;
       margin: 0 auto;
+      position: relative;
+    }
+
+    #btn-fullscreen {
+      position: absolute;
+      top: 0px;
+      right: 0px;
+      font-size: 0.9rem;
+      padding: 0.5rem 1rem;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
     }
 
     h1 {
@@ -40,6 +54,7 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       margin-bottom: 2rem;
+      margin-top: 3rem;
     }
 
     h2, h3 { color: #e2e8f0; }
@@ -115,11 +130,11 @@
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
       gap: 12px;
-      margin-top: 1rem;
+      margin: 1rem auto;
+      width: 100%;
     }
-    @media (max-width: 600px) { .grid { grid-template-columns: repeat(4, 1fr); } }
 
     .card {
       background-color: var(--card-bg);
@@ -189,6 +204,7 @@
 </head>
 <body>
   <div class="container">
+    <button id="btn-fullscreen">Vollbild</button>
     <h1>Wer ist es?</h1>
 
     <div id="view-mode-select" class="view active-view">
@@ -225,7 +241,7 @@
       <div id="status-bar">Warte auf Zuweisung...</div>
       
       <div id="opponent-target-display">
-        <p style="margin: 0 0 5px 0; color: #38ef7d; font-size: 0.75rem; font-weight: bold; text-transform: uppercase;">Du suchst:</p>
+        <p style="margin: 0 0 5px 0; color: #38ef7d; font-size: 0.75rem; font-weight: bold; text-transform: uppercase;">Sucht nach:</p>
         <div id="opponent-target-content"></div>
       </div>
 
@@ -256,8 +272,8 @@
     let players = [];
     let isHost = false;
     let myAssignment = null; 
-    let cardIGuess = null;     // Die Karte, die ich erraten muss (unsichtbar)
-    let cardToDefend = null;   // Die Karte, die ich für wen anders wähle (sichtbar)
+    let cardIGuess = null;     
+    let cardToDefend = null;   
     let selectionsReady = 0;
     let gamePhase = 'waiting';
 
@@ -314,7 +330,6 @@
         div.innerHTML = getCardHTML(file);
         div.addEventListener('click', () => {
           div.classList.toggle('custom-unselected');
-          saveUserCustomSelection(name);
         });
         grid.appendChild(div);
       });
@@ -394,8 +409,6 @@
 
     function setStatus(text) { document.getElementById('status-bar').innerText = text; }
 
-    // --- MULTIPLAYER LOBBY LOGIK ---
-
     document.getElementById('btn-join-lobby').addEventListener('click', async () => {
       const nameInput = document.getElementById('player-name').value.trim();
       if (!nameInput) return alert('Bitte Namen eingeben');
@@ -454,8 +467,6 @@
       players = data.players;
       updateLobbyUI();
     });
-
-    // --- SPIELSTART & ZUWEISUNG ---
 
     document.getElementById('btn-start-multiplayer').addEventListener('click', () => {
       if (players.length < 2) return alert('Mindestens 2 Spieler erforderlich.');
@@ -523,12 +534,10 @@
     function processSelection(data) {
       selectionsReady++;
       
-      // Jemand anderes hat diese Karte für mich gewählt. Ich muss sie erraten.
       if (data.guesserName === myName) {
         cardIGuess = data.targetItem;
       }
       
-      // Ich habe diese Karte für jemand anderen gewählt. Ich muss sie sehen.
       if (data.pickerName === myName) {
         cardToDefend = data.targetItem;
       }
@@ -545,7 +554,7 @@
       renderBoard(myPool);
       
       document.getElementById('opponent-target-display').style.display = 'block';
-      document.querySelector('#opponent-target-display p').innerText = `${myAssignment.guesserName} sucht:`;
+      document.querySelector('#opponent-target-display p').innerText = `${myAssignment.guesserName} sucht nach:`;
       document.getElementById('opponent-target-content').innerHTML = getCardHTML(cardToDefend);
     }
 
@@ -574,8 +583,6 @@
         document.getElementById('btn-restart').style.display = 'block';
       }
     }
-
-    // --- NEUSTART ---
 
     document.getElementById('btn-restart').addEventListener('click', () => {
       channel.trigger('client-restart', {});
@@ -611,6 +618,23 @@
         channel.trigger('client-sync-lobby', { players: players });
       }
     }
+
+    // FULLSCREEN LOGIK
+    document.getElementById('btn-fullscreen').addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().then(() => {
+          if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('landscape').catch(err => console.log("Ausrichtungssperre blockiert:", err));
+          }
+        }).catch(err => {
+          console.log(`Fehler beim Vollbild: ${err.message}`);
+        });
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    });
   </script>
 </body>
 </html>
