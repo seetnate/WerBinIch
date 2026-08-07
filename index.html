@@ -25,7 +25,7 @@
       padding: 0;
       width: 100%;
       height: 100%;
-      overflow: hidden; /* Verhindert Scrollen auf dem Handy */
+      overflow: hidden; 
       text-align: center;
     }
 
@@ -36,7 +36,6 @@
       flex-direction: column;
     }
 
-    /* Wird im Spiel ausgeblendet */
     .hide-in-game {
       display: block;
     }
@@ -103,7 +102,7 @@
 
     .view { display: none; animation: fadeIn 0.3s ease-in-out; flex: 1; flex-direction: column; overflow-y: auto; padding: 10px; }
     .active-view { display: flex; }
-    #view-game { padding: 0; overflow: hidden; } /* Im Spiel kein Padding, volles Display */
+    #view-game { padding: 0; overflow: hidden; } 
 
     @keyframes fadeIn {
       from { opacity: 0; }
@@ -127,12 +126,11 @@
       margin-top: 1rem;
     }
 
-    /* Neues, kompaktes Header-UI fürs Spiel (Vollbild-optimiert) */
     #game-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      height: 10vh; /* Genau 10% der Bildschirmhöhe */
+      height: 10vh; 
       background: var(--card-bg);
       border-bottom: 1px solid var(--border-color);
       padding: 0 10px;
@@ -163,7 +161,6 @@
     #opponent-target-content img { height: 6vh; width: 6vh; object-fit: cover; border-radius: 50%; }
     #opponent-target-content span { font-size: 0.8rem; font-weight: bold; }
 
-    /* Dynamisches Spiel-Grid */
     #board {
       flex: 1;
       display: grid;
@@ -173,20 +170,12 @@
       box-sizing: border-box;
     }
 
-    /* Hochformat (Portrait): 4 Spalten, 5 Reihen */
     @media (orientation: portrait) {
-      #board {
-        grid-template-columns: repeat(4, 1fr);
-        grid-template-rows: repeat(5, 1fr);
-      }
+      #board { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(5, 1fr); }
     }
 
-    /* Querformat (Landscape): 5 Spalten, 4 Reihen */
     @media (orientation: landscape) {
-      #board {
-        grid-template-columns: repeat(5, 1fr);
-        grid-template-rows: repeat(4, 1fr);
-      }
+      #board { grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(4, 1fr); }
     }
 
     .card {
@@ -201,11 +190,32 @@
       overflow: hidden;
       width: 100%;
       height: 100%;
+      position: relative;
     }
     .card img { width: 100%; height: 75%; object-fit: cover; }
     .card span { height: 25%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.7rem; color: var(--text-main); }
     
+    /* Custom Mode Styles */
     .card.custom-unselected { opacity: 0.3; filter: grayscale(80%); }
+    .card.custom-selected { border-color: #38ef7d; }
+    .card.custom-selected::after {
+      content: '✔';
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background: #38ef7d;
+      color: #0f1015;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 14px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    }
+
     .eliminated { opacity: 0.15; filter: grayscale(100%); border-color: #000; }
     .selected-target { border-color: #38ef7d !important; box-shadow: 0 0 10px rgba(56, 239, 125, 0.5); pointer-events: none; }
 
@@ -265,18 +275,13 @@
     </div>
 
     <div id="view-game" class="view">
-      <!-- Neues Header-Design für das Spiel -->
       <div id="game-header">
         <div id="status-bar">Warte auf Zuweisung...</div>
         <div id="opponent-target-display">
-          <div>
-            <p id="target-player-name">Gegner</p>
-          </div>
+          <div><p id="target-player-name">Gegner</p></div>
           <div id="opponent-target-content"></div>
         </div>
       </div>
-
-      <!-- Spielfeld passt sich exakt an -->
       <div id="board"></div>
     </div>
   </div>
@@ -308,12 +313,11 @@
     let selectionsReady = 0;
     let gamePhase = 'waiting';
 
-    // Vollbild-Funktion (Muss durch Klick ausgelöst werden)
     function forceFullscreen() {
       if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().then(() => {
           if (screen.orientation && screen.orientation.lock) {
-            screen.orientation.lock('landscape').catch(() => {}); // Ignorieren, wenn Browser blockiert
+            screen.orientation.lock('landscape').catch(() => {}); 
           }
         }).catch(() => {});
       }
@@ -321,7 +325,6 @@
 
     document.getElementById('btn-fullscreen').addEventListener('click', forceFullscreen);
 
-    // Entfernt Titel und Menü-Reste
     function toggleGameUI(inGame) {
       const elementsToHide = document.querySelectorAll('.hide-in-game');
       elementsToHide.forEach(el => el.style.display = inGame ? 'none' : 'block');
@@ -337,22 +340,17 @@
     function switchView(viewId) {
       document.querySelectorAll('.view').forEach(v => v.classList.remove('active-view'));
       document.getElementById(viewId).classList.add('active-view');
-      
-      if (viewId === 'view-game') {
-        toggleGameUI(true);
-      } else {
-        toggleGameUI(false);
-      }
+      toggleGameUI(viewId === 'view-game');
     }
 
     window.selectMode = function(mode) {
       selectedMode = mode;
-      const customContainer = document.getElementById('custom-selection-container');
-      customContainer.style.display = mode === 'custom' ? 'block' : 'none';
+      document.getElementById('custom-selection-container').style.display = mode === 'custom' ? 'block' : 'none';
       switchView('view-setup');
     };
 
-    document.getElementById('player-name').addEventListener('input', (e) => {
+    // Ändert von "input" auf "change" um Lags und Datenbank-Spam zu verhindern
+    document.getElementById('player-name').addEventListener('change', (e) => {
       const name = e.target.value.trim();
       if (selectedMode === 'custom' && name) {
         loadUserCustomSelection(name);
@@ -360,7 +358,16 @@
     });
 
     async function loadUserCustomSelection(name) {
-      const { data } = await supabaseClient.from('user_selections').select('selected_images').eq('player_name', name).single();
+      const { data, error } = await supabaseClient
+        .from('user_selections')
+        .select('selected_images')
+        .eq('player_name', name)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error("Lade-Fehler:", error.message);
+      }
+
       const selectedSet = data ? data.selected_images : [...allBasicFiles];
       const grid = document.getElementById('custom-grid');
       grid.innerHTML = '';
@@ -368,10 +375,20 @@
       allBasicFiles.forEach(file => {
         const div = document.createElement('div');
         div.className = 'card';
-        if (!selectedSet.includes(file)) div.classList.add('custom-unselected');
+        
+        if (selectedSet.includes(file)) {
+          div.classList.add('custom-selected');
+        } else {
+          div.classList.add('custom-unselected');
+        }
 
         div.innerHTML = getCardHTML(file);
-        div.addEventListener('click', () => div.classList.toggle('custom-unselected'));
+        
+        div.addEventListener('click', () => {
+          div.classList.toggle('custom-selected');
+          div.classList.toggle('custom-unselected');
+        });
+        
         grid.appendChild(div);
       });
     }
@@ -379,10 +396,19 @@
     async function saveUserCustomSelection(name) {
       const gridCards = document.querySelectorAll('#custom-grid .card');
       const selectedFiles = [];
+      
       gridCards.forEach((card, index) => {
-        if (!card.classList.contains('custom-unselected')) selectedFiles.push(allBasicFiles[index]);
+        if (card.classList.contains('custom-selected')) {
+          selectedFiles.push(allBasicFiles[index]);
+        }
       });
-      await supabaseClient.from('user_selections').upsert({ player_name: name, selected_images: selectedFiles });
+      
+      const { error } = await supabaseClient.from('user_selections').upsert({ player_name: name, selected_images: selectedFiles });
+      
+      if (error) {
+        console.error("Speicher-Fehler:", error.message);
+        alert("Fehler beim Speichern in der Datenbank: " + error.message + "\n\nPrüfe, ob die RLS-Richtlinien deaktiviert sind.");
+      }
     }
 
     function shuffleArray(array) {
@@ -433,7 +459,7 @@
     function setStatus(text) { document.getElementById('status-bar').innerText = text; }
 
     document.getElementById('btn-join-lobby').addEventListener('click', async () => {
-      forceFullscreen(); // Trigger für Vollbild
+      forceFullscreen(); 
       
       const nameInput = document.getElementById('player-name').value.trim();
       if (!nameInput) return alert('Bitte Namen eingeben');
@@ -480,7 +506,7 @@
     });
 
     document.getElementById('btn-start-multiplayer').addEventListener('click', () => {
-      forceFullscreen(); // Trigger für Vollbild
+      forceFullscreen();
       
       let assignments = [];
       let shuffledPlayers = shuffleArray([...players]);
