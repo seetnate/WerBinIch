@@ -226,7 +226,8 @@
   </div>
 
   <script>
-    const pusher = new Pusher('3df7da082bcfbaaacad9', { cluster: 'eu', authEndpoint: '.netlify/functions/auth' });
+    // VERCEL UPDATE: authEndpoint auf /api/auth angepasst
+    const pusher = new Pusher('3df7da082bcfbaaacad9', { cluster: 'eu', authEndpoint: '/api/auth' });
     const channel = pusher.subscribe('private-game-room');
     
     const SUPABASE_URL = 'https://vqqtiskjqyemzhelmqki.supabase.co';
@@ -247,7 +248,8 @@
 
     let allBasicFiles = [];
 
-    fetch('/.netlify/functions/getImages')
+    // VERCEL UPDATE: Fetch auf /api/getImages angepasst
+    fetch('/api/getImages')
       .then(res => res.json())
       .then(files => {
         if (files.error) return console.error(files.error);
