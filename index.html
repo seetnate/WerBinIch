@@ -158,17 +158,22 @@
 
     #custom-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 12px; margin-top: 1.5rem; }
 
-    /* Admin Bar */
+    /* Globale Admin Bar */
     #admin-bar {
       display: none;
       background: rgba(255, 8, 68, 0.15);
-      border-bottom: 2px solid #ff0844;
-      padding: 8px;
+      border: 2px solid #ff0844;
+      border-radius: 16px;
+      padding: 10px;
+      margin: 10px auto;
+      width: 95%;
+      max-width: 700px;
       justify-content: center;
       align-items: center;
       gap: 10px;
       z-index: 51;
       flex-wrap: wrap;
+      box-shadow: 0 4px 15px rgba(255, 8, 68, 0.2);
     }
 
     #game-header {
@@ -282,6 +287,19 @@
   <div class="container">
     <h1 class="hide-in-game" id="main-title">Wer ist es? ✌️</h1>
 
+    <!-- GLOBALE ADMIN BAR -->
+    <div id="admin-bar">
+       <button id="btn-admin-kick-inactive" class="btn-danger" style="font-size: 0.75rem; padding: 6px 12px; margin: 0; display: none;">Inaktive Kicken & Starten</button>
+       
+       <div id="admin-midgame-controls" style="display: none; align-items: center; gap: 10px;">
+           <select id="admin-player-select" style="font-size: 0.75rem; padding: 4px; margin: 0; width: 120px; border-radius: 8px;"></select>
+           <button id="btn-admin-kick-midgame" class="btn-danger" style="font-size: 0.75rem; padding: 6px 12px; margin: 0;">Kicken</button>
+           <button id="btn-admin-skip-turn" class="btn-custom" style="font-size: 0.75rem; padding: 6px 12px; margin: 0;">Zug überspringen</button>
+       </div>
+
+       <button id="btn-admin-abort" class="btn-danger" style="font-size: 0.75rem; padding: 6px 12px; margin: 0;">Spiel abbrechen (Reset)</button>
+    </div>
+
     <!-- 1. Modus Auswahl -->
     <div id="view-mode-select" class="view active-view">
       <div class="setup-card">
@@ -328,20 +346,6 @@
 
     <!-- 5. Das Spiel -->
     <div id="view-game" class="view" style="padding:0; align-items: stretch;">
-      
-      <!-- Admin Bar -->
-      <div id="admin-bar">
-         <button id="btn-admin-kick-inactive" class="btn-danger" style="font-size: 0.75rem; padding: 6px 12px; margin: 0; display: none;">Inaktive Kicken & Starten</button>
-         
-         <div id="admin-midgame-controls" style="display: none; align-items: center; gap: 10px;">
-             <select id="admin-player-select" style="font-size: 0.75rem; padding: 4px; margin: 0; width: 120px; border-radius: 8px;"></select>
-             <button id="btn-admin-kick-midgame" class="btn-danger" style="font-size: 0.75rem; padding: 6px 12px; margin: 0;">Kicken</button>
-             <button id="btn-admin-skip-turn" class="btn-custom" style="font-size: 0.75rem; padding: 6px 12px; margin: 0;">Zug überspringen</button>
-         </div>
-
-         <button id="btn-admin-abort" class="btn-danger" style="font-size: 0.75rem; padding: 6px 12px; margin: 0;">Spiel abbrechen (Reset)</button>
-      </div>
-
       <div id="game-header">
         <div id="turn-container">
           <div id="turn-status">Lade...</div>
@@ -423,6 +427,7 @@
 
     const pusher = new Pusher('3df7da082bcfbaaacad9', { cluster: 'eu', authEndpoint: '/api/auth' });
     let channel = null; 
+    let globalChannel = pusher.subscribe('private-global'); // Für Live-Lobbys
     
     const SUPABASE_URL = 'https://vqqtiskjqyemzhelmqki.supabase.co';
     // TRAGE HIER DEINEN RICHTIGEN KEY EIN:
@@ -452,6 +457,13 @@
     let ranking = [];
     let readyPlayers = [];
 
+    // --- LIVE LOBBY UPDATES ---
+    globalChannel.bind('client-lobbies-updated', () => {
+        if (document.getElementById('view-lobby-list').classList.contains('active-view')) {
+            loadLobbies();
+        }
+    });
+
     function getBaseName(filename) { return filename.split('/').pop().split('.')[0].replace(/_\d+$/, ''); }
     function getDisplayName(filename) { let name = getBaseName(filename); return name.charAt(0).toUpperCase() + name.slice(1); }
 
@@ -470,13 +482,22 @@
 
     function toggleGameUI(inGame) {
       document.querySelectorAll('.hide-in-game').forEach(el => el.style.display = inGame ? 'none' : 'block');
-      if (isAdmin && inGame) {
-          document.getElementById('admin-bar').style.display = 'flex';
-          document.getElementById('btn-admin-kick-inactive').style.display = (gamePhase === 'selecting') ? 'block' : 'none';
-          document.getElementById('admin-midgame-controls').style.display = (gamePhase === 'playing') ? 'flex' : 'none';
-          updateAdminPlayerSelect();
-      } else {
-          document.getElementById('admin-bar').style.display = 'none';
+    }
+
+    // --- GLOBALE ADMIN BAR LOGIK ---
+    function updateAdminBar() {
+      const adminBar = document.getElementById('admin-bar');
+      if (!isAdmin || !currentRoom) {
+          adminBar.style.display = 'none';
+          return;
+      }
+      adminBar.style.display = 'flex';
+      
+      document.getElementById('btn-admin-kick-inactive').style.display = (gamePhase === 'selecting') ? 'block' : 'none';
+      document.getElementById('admin-midgame-controls').style.display = (gamePhase === 'playing') ? 'flex' : 'none';
+      
+      if (gamePhase === 'playing') {
+         updateAdminPlayerSelect();
       }
     }
 
@@ -502,6 +523,7 @@
       document.querySelectorAll('.view').forEach(v => v.classList.remove('active-view'));
       document.getElementById(viewId).classList.add('active-view');
       toggleGameUI(viewId === 'view-game');
+      updateAdminBar();
       if (viewId === 'view-game') window.scrollTo(0, 0); 
     }
 
@@ -628,6 +650,7 @@
               document.getElementById('target-image-container').innerHTML = getCardHTML(cardToDefend);
               updateTurnUI();
             }
+            updateAdminBar();
             return; 
           }
         } catch (e) { console.error("Session Restore Error", e); }
@@ -664,7 +687,7 @@
       }
     });
 
-    // --- ADMIN FUNKTIONEN ---
+    // --- ADMIN FUNKTIONEN BINDINGS ---
     document.getElementById('btn-admin-kick-inactive').addEventListener('click', () => {
       const inactive = players.filter(p => !readyPlayers.includes(p.name));
       if (inactive.length === 0) return alert("Alle haben bereits gewählt!");
@@ -692,20 +715,19 @@
       resetGameToLobby();
     });
 
-    // Smarte Reassignment Logik beim Kicken mid-game
     document.getElementById('btn-admin-kick-midgame').addEventListener('click', () => {
       const playerToKick = document.getElementById('admin-player-select').value;
       if(!playerToKick) return;
       
-      const a1 = globalAssignments.find(a => a.pickerName === playerToKick); // Der Gekickte hat für X gewählt
-      const a2 = globalAssignments.find(a => a.guesserName === playerToKick); // Y hat für den Gekickten gewählt
+      const a1 = globalAssignments.find(a => a.pickerName === playerToKick); 
+      const a2 = globalAssignments.find(a => a.guesserName === playerToKick); 
 
       if (a1 && a2) {
           const orphanedGuesser = a1.guesserName;
           const freePicker = a2.pickerName;
-          const itemToDefend = a1.targetItem; // Das Bild, das der Gekickte für X ausgesucht hatte
+          const itemToDefend = a1.targetItem; 
 
-          a1.pickerName = freePicker; // Kette schließen
+          a1.pickerName = freePicker; 
 
           channel.trigger('client-reassign', {
               newPicker: freePicker,
@@ -770,7 +792,11 @@
           btnGroup.appendChild(joinBtn);
           if (isAdmin) {
              const delBtn = document.createElement('button'); delBtn.innerText = 'X'; delBtn.className = 'btn-danger'; delBtn.style.marginLeft = '10px';
-             delBtn.onclick = async () => { await supabaseClient.from('active_lobbies').delete().eq('room_name', room.room_name); loadLobbies(); };
+             delBtn.onclick = async () => { 
+                 await supabaseClient.from('active_lobbies').delete().eq('room_name', room.room_name); 
+                 globalChannel.trigger('client-lobbies-updated', {});
+                 loadLobbies(); 
+             };
              btnGroup.appendChild(delBtn);
           }
           li.appendChild(btnGroup); list.appendChild(li);
@@ -783,6 +809,7 @@
       if(!rName) return alert('Bitte gib deiner Lobby einen Namen!');
       const { error } = await supabaseClient.from('active_lobbies').insert({ room_name: rName, created_by: myName });
       if(error && error.code !== '23505') return alert("Fehler beim Erstellen: " + error.message);
+      globalChannel.trigger('client-lobbies-updated', {});
       joinRoom(rName, true);
     });
 
@@ -845,7 +872,6 @@
       if (!readyPlayers.includes(data.pickerName)) readyPlayers.push(data.pickerName);
       selectionsReady++;
       
-      // Speichere Target für evtl. spätere Admin-Reassignments
       let assign = globalAssignments.find(a => a.pickerName === data.pickerName && a.guesserName === data.guesserName);
       if (assign) assign.targetItem = data.targetItem;
 
@@ -867,7 +893,7 @@
       content.innerHTML = getCardHTML(cardToDefend);
       document.getElementById('opponent-target-content').classList.remove('revealed'); 
 
-      toggleGameUI(true); 
+      updateAdminBar();
       updateTurnUI();
       saveSessionState();
     }
@@ -1065,7 +1091,7 @@
       let me = players.find(p => p.name === myName);
       if(me) me.pool = myPool;
       
-      sessionStorage.removeItem('werbinich_session'); // Reset State
+      sessionStorage.removeItem('werbinich_session'); 
       
       switchView('view-lobby');
       updateLobbyUI();
