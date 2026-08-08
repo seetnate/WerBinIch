@@ -429,6 +429,7 @@
     
     let gamePhase = 'waiting'; 
     let isMyTurn = false;
+    let wasMyTurn = false; // Für haptisches Feedback
     let isGuessingMode = false;
     let activePlayers = []; 
     let currentTurnName = '';
@@ -540,6 +541,85 @@
       });
     }
 
+    // --- SESSION RECOVERY LOGIK ---
+    function saveSessionState() {
+      if (!myName || !currentRoom) return;
+      const eliminated = Array.from(document.querySelectorAll('.card.eliminated')).map(c => parseInt(c.dataset.index));
+      const state = {
+        myName, currentRoom, isHost, isAdmin, gamePhase, myPool, players, 
+        globalAssignments, myAssignment, cardIGuess, cardToDefend, activePlayers, 
+        currentTurnName, ranking, eliminated, selectionsReady, selectedMode
+      };
+      localStorage.setItem('werbinich_session', JSON.stringify(state));
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const saved = localStorage.getItem('werbinich_session');
+      if (saved) {
+        try {
+          const state = JSON.parse(saved);
+          if (state.currentRoom && state.myName) {
+            myName = state.myName; currentRoom = state.currentRoom;
+            isHost = state.isHost; isAdmin = state.isAdmin; gamePhase = state.gamePhase;
+            myPool = state.myPool || []; players = state.players || [];
+            globalAssignments = state.globalAssignments || []; myAssignment = state.myAssignment || null;
+            cardIGuess = state.cardIGuess || null; cardToDefend = state.cardToDefend || null;
+            activePlayers = state.activePlayers || []; currentTurnName = state.currentTurnName || '';
+            ranking = state.ranking || []; selectionsReady = state.selectionsReady || 0;
+            selectedMode = state.selectedMode || 'basic';
+
+            document.getElementById('player-name').value = myName;
+            bindPusherChannel();
+
+            if (gamePhase === 'waiting') {
+              switchView('view-lobby'); updateLobbyUI();
+            } else if (gamePhase === 'selecting') {
+              switchView('view-game'); renderBoard(myAssignment.guesserPool);
+              document.getElementById('turn-status').innerText = `Wähle das Bild für: ${myAssignment.guesserName}`;
+            } else if (gamePhase === 'playing') {
+              switchView('view-game'); renderBoard(myPool);
+              if (state.eliminated) {
+                 state.eliminated.forEach(idx => {
+                    const card = document.querySelector(`.card[data-index='${idx}']`);
+                    if(card) card.classList.add('eliminated');
+                 });
+              }
+              document.getElementById('opponent-target-display').style.display = 'flex';
+              document.getElementById('target-player-name').innerText = `${myAssignment.guesserName} sucht:`;
+              document.getElementById('target-image-container').innerHTML = getCardHTML(cardToDefend);
+              updateTurnUI();
+            }
+            return; // Beende den normalen Boot-Prozess, da wir wiederhergestellt haben
+          }
+        } catch (e) { console.error("Session Restore Error", e); }
+      }
+    });
+
+    function bindPusherChannel() {
+      if (channel) pusher.unsubscribe(channel.name);
+      channel = pusher.subscribe('private-room-' + currentRoom);
+      
+      channel.bind('client-join', (data) => { if (!players.find(p => p.name === data.name)) { players.push(data); updateLobbyUI(); saveSessionState(); } if (isHost || isAdmin) channel.trigger('client-sync-lobby', { players: players }); });
+      channel.bind('client-sync-lobby', (data) => { if(!isHost) players = data.players; updateLobbyUI(); saveSessionState(); });
+      channel.bind('client-start-selection', (data) => startSelectionPhase(data.assignments));
+      channel.bind('client-target-selected', (data) => processSelection(data));
+      channel.bind('client-next-turn', (data) => setNextTurn(data.nextPlayer));
+      channel.bind('client-player-finished', (data) => processPlayerFinish(data));
+      channel.bind('client-restart', () => resetGameToLobby());
+
+      channel.bind('pusher:subscription_succeeded', () => channel.trigger('client-join', { name: myName, pool: myPool }));
+    }
+
+    // Pusher Auto-Reconnect Logik für den Hintergrund
+    pusher.connection.bind('state_change', function(states) {
+      if (states.current === 'connected' && states.previous === 'connecting') {
+        if (currentRoom && channel && gamePhase === 'waiting') {
+           channel.trigger('client-join', { name: myName, pool: myPool });
+        }
+      }
+    });
+    // ----------------------------------
+
     document.getElementById('btn-go-to-lobbies').addEventListener('click', async () => {
       forceFullscreen(); 
       const nameInput = document.getElementById('player-name').value.trim();
@@ -582,19 +662,9 @@
     function joinRoom(roomName, asHost) {
       currentRoom = roomName.replace(/[^a-zA-Z0-9-_]/g, '-'); isHost = asHost; players = [{ name: myName, pool: myPool }];
       document.getElementById('current-room-title').innerText = "Raum: " + roomName;
-      if (channel) pusher.unsubscribe(channel.name);
-      channel = pusher.subscribe('private-room-' + currentRoom);
-      
-      channel.bind('client-join', (data) => { if (!players.find(p => p.name === data.name)) { players.push(data); updateLobbyUI(); } if (isHost || isAdmin) channel.trigger('client-sync-lobby', { players: players }); });
-      channel.bind('client-sync-lobby', (data) => { if(!isHost) players = data.players; updateLobbyUI(); });
-      channel.bind('client-start-selection', (data) => startSelectionPhase(data.assignments));
-      channel.bind('client-target-selected', (data) => processSelection(data));
-      channel.bind('client-next-turn', (data) => setNextTurn(data.nextPlayer));
-      channel.bind('client-player-finished', (data) => processPlayerFinish(data));
-      channel.bind('client-restart', () => resetGameToLobby());
-
+      bindPusherChannel();
       switchView('view-lobby'); updateLobbyUI();
-      channel.bind('pusher:subscription_succeeded', () => channel.trigger('client-join', { name: myName, pool: myPool }));
+      saveSessionState();
     }
 
     function updateLobbyUI() {
@@ -602,6 +672,7 @@
       players.forEach(p => { const li = document.createElement('li'); li.className = 'player-list-item'; li.innerText = p.name + (p.name === myName ? " (Du)" : ""); list.appendChild(li); });
       document.getElementById('lobby-status').innerText = `Spieler in Lobby: ${players.length}`;
       document.getElementById('btn-start-multiplayer').style.display = ((isHost || isAdmin) && players.length >= 2) ? 'block' : 'none';
+      saveSessionState();
     }
 
     document.getElementById('btn-start-multiplayer').addEventListener('click', () => {
@@ -618,6 +689,7 @@
       document.getElementById('turn-status').innerText = `Wähle das Bild für: ${myAssignment.guesserName}`;
       document.getElementById('turn-ask').innerText = '';
       renderBoard(myAssignment.guesserPool);
+      saveSessionState();
     }
 
     function processSelection(data) {
@@ -641,6 +713,7 @@
       document.getElementById('opponent-target-content').classList.remove('revealed'); 
 
       updateTurnUI();
+      saveSessionState();
     }
 
     function updateTurnUI() {
@@ -659,6 +732,8 @@
         statusText.style.color = 'var(--text-muted)';
         askText.innerText = `${currentTurnName} fragt ${personToAsk}`;
         actions.style.display = 'none';
+        wasMyTurn = false;
+        saveSessionState();
         return;
       }
 
@@ -670,12 +745,18 @@
         askText.innerText = `👉 Frag: ${personToAsk}`;
         actions.style.display = 'flex';
         document.getElementById('btn-solve').innerText = 'Lösen';
+        
+        // HAPTISCHES FEEDBACK (Vibration) nur beim Wechsel zum eigenen Zug
+        if (!wasMyTurn && navigator.vibrate) navigator.vibrate([200]);
+        wasMyTurn = true;
       } else {
         statusText.innerText = `Zug: ${currentTurnName}`;
         statusText.style.color = 'var(--text-main)';
         askText.innerText = `👉 Fragt: ${personToAsk}`;
         actions.style.display = 'none';
+        wasMyTurn = false;
       }
+      saveSessionState();
     }
 
     document.getElementById('btn-end-turn').addEventListener('click', () => {
@@ -749,6 +830,7 @@
           if (activePlayers.length > 0) calculateNextTurn();
         } else {
           cardElement.classList.toggle('eliminated');
+          saveSessionState();
         }
       }
     }
@@ -788,6 +870,7 @@
           document.getElementById('btn-restart').style.display = 'block';
         }
       }
+      saveSessionState();
     }
 
     function renderScoreboard() {
