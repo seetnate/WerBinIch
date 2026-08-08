@@ -532,7 +532,9 @@
 
       switchView('view-lobby');
       updateLobbyUI();
-      channel.trigger('client-join', { name: myName, pool: myPool });
+      channel.bind('pusher:subscription_succeeded', () => {
+  channel.trigger('client-join', { name: myName, pool: myPool });
+});
     }
 
     function updateLobbyUI() {
