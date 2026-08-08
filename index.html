@@ -12,6 +12,7 @@
       --accent-basic: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       --accent-custom: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
       --accent-green: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      --accent-danger: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
       --text-main: #ffffff;
       --text-muted: #a0aec0;
       --border-color: #2d3748;
@@ -37,9 +38,7 @@
       background-color: var(--bg-color);
     }
 
-    .hide-in-game {
-      display: block;
-    }
+    .hide-in-game { display: block; }
 
     #btn-fullscreen {
       position: absolute;
@@ -86,6 +85,7 @@
     .btn-basic { background: var(--accent-basic); }
     .btn-custom { background: var(--accent-custom); }
     .btn-action { background: var(--accent-green); width: 100%; max-width: 320px; margin: 1rem 0; }
+    .btn-danger { background: var(--accent-danger); font-size: 0.9rem; padding: 0.5rem 1rem; margin: 0;}
 
     input {
       background: var(--card-bg);
@@ -105,10 +105,7 @@
     .active-view { display: flex; }
     #view-game { padding: 0; overflow: hidden; } 
 
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
     .setup-card {
       background: var(--card-bg);
@@ -120,86 +117,40 @@
       max-width: 500px;
     }
 
-    #custom-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-      gap: 8px;
-      margin-top: 1rem;
-    }
+    #custom-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; margin-top: 1rem; }
 
     #game-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      height: 15vh; 
-      background: var(--card-bg);
-      border-bottom: 1px solid var(--border-color);
-      padding: 0 10px;
-      box-sizing: border-box;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 15vh; background: var(--card-bg); border-bottom: 1px solid var(--border-color);
+      padding: 0 10px; box-sizing: border-box;
     }
 
-    #status-bar {
-      font-size: 0.85rem;
-      font-weight: bold;
-      color: #a0aec0;
-      text-align: left;
-      flex: 1;
-    }
+    #status-bar { font-size: 0.85rem; font-weight: bold; color: #a0aec0; text-align: left; flex: 1; }
 
     #opponent-target-display {
-      display: none;
-      align-items: center;
-      gap: 10px;
-      background: rgba(56, 239, 125, 0.1);
-      border: 1px solid #38ef7d;
-      border-radius: 8px;
-      padding: 4px 10px;
-      height: 80%;
+      display: none; align-items: center; gap: 10px; background: rgba(56, 239, 125, 0.1);
+      border: 1px solid #38ef7d; border-radius: 8px; padding: 4px 10px; height: 80%;
     }
     
     #opponent-target-display p { margin: 0; color: #38ef7d; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; }
     #opponent-target-content { display: flex; align-items: center; gap: 8px; }
     
     #opponent-target-content img { 
-      height: 10vh; 
-      aspect-ratio: 4 / 5; 
-      object-fit: cover; 
-      border-radius: 4px; 
-      border: 1px solid var(--border-color);
+      height: 10vh; aspect-ratio: 4 / 5; object-fit: cover; 
+      border-radius: 4px; border: 1px solid var(--border-color);
     }
     
     #opponent-target-content span { font-size: 0.8rem; font-weight: bold; }
 
-    #board {
-      flex: 1;
-      display: grid;
-      gap: 4px;
-      padding: 4px;
-      background: #000;
-      box-sizing: border-box;
-    }
+    #board { flex: 1; display: grid; gap: 4px; padding: 4px; background: #000; box-sizing: border-box; }
 
-    @media (orientation: portrait) {
-      #board { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(5, 1fr); }
-    }
-
-    @media (orientation: landscape) {
-      #board { grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(4, 1fr); }
-    }
+    @media (orientation: portrait) { #board { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(5, 1fr); } }
+    @media (orientation: landscape) { #board { grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(4, 1fr); } }
 
     .card {
-      background-color: var(--card-bg);
-      border: 2px solid var(--border-color);
-      border-radius: 8px;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: space-between;
-      overflow: hidden;
-      width: 100%;
-      height: 100%;
-      position: relative;
+      background-color: var(--card-bg); border: 2px solid var(--border-color); border-radius: 8px;
+      cursor: pointer; display: flex; flex-direction: column; align-items: center;
+      justify-content: space-between; overflow: hidden; width: 100%; height: 100%; position: relative;
     }
     .card img { width: 100%; height: 75%; object-fit: cover; }
     .card span { height: 25%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.7rem; color: var(--text-main); }
@@ -207,79 +158,42 @@
     .card.custom-unselected { opacity: 0.3; filter: grayscale(80%); }
     .card.custom-selected { border-color: #38ef7d; }
     .card.custom-selected::after {
-      content: '✔';
-      position: absolute;
-      top: 5px;
-      right: 5px;
-      background: #38ef7d;
-      color: #0f1015;
-      border-radius: 50%;
-      width: 22px;
-      height: 22px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      font-size: 14px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+      content: '✔'; position: absolute; top: 5px; right: 5px; background: #38ef7d; color: #0f1015;
+      border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center;
+      justify-content: center; font-weight: bold; font-size: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.5);
     }
 
     .eliminated { opacity: 0.15; filter: grayscale(100%); border-color: #000; }
     .selected-target { border-color: #38ef7d !important; box-shadow: 0 0 10px rgba(56, 239, 125, 0.5); pointer-events: none; }
 
     #win-screen {
-      display: none;
-      position: fixed;
-      top: 0; left: 0;
-      width: 100vw; height: 100vh;
-      background: rgba(15, 16, 21, 0.95);
-      z-index: 999;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+      display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(15, 16, 21, 0.95); z-index: 999; flex-direction: column;
+      align-items: center; justify-content: center;
     }
     #win-screen h1 { font-size: 3rem; color: #38ef7d; margin-bottom: 0.5rem; }
     #win-screen h2 { font-size: 1.5rem; color: white; margin-bottom: 1.5rem; }
     #win-screen button { background: var(--accent-custom); }
     
-    .player-list-item { background: #2d3748; margin: 5px auto; padding: 10px; border-radius: 8px; font-weight: bold; }
+    .player-list-item { background: #2d3748; margin: 5px auto; padding: 10px; border-radius: 8px; font-weight: bold; display: flex; justify-content: space-between; align-items: center;}
+    .lobby-info { display: flex; flex-direction: column; align-items: flex-start; }
+    .lobby-title { font-size: 1.1rem; color: white; }
+    .lobby-host { font-size: 0.8rem; color: var(--text-muted); font-weight: normal; }
 
     /* PC Optimierung */
     @media (min-width: 800px) {
-      body {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background-color: #050505; 
-      }
+      body { display: flex; align-items: center; justify-content: center; background-color: #050505; }
       .container {
-        width: 95vw;
-        height: 90vh;
-        max-width: 1100px;
-        max-height: 800px;
-        border-radius: 16px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.8);
-        border: 1px solid var(--border-color);
-        position: relative;
+        width: 95vw; height: 90vh; max-width: 1100px; max-height: 800px;
+        border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+        border: 1px solid var(--border-color); position: relative;
       }
-      .card span {
-        font-size: 1.1rem; 
-      }
-      #board {
-        gap: 12px;
-        padding: 12px;
-        border-radius: 0 0 16px 16px;
-      }
-      #game-header {
-        height: 130px; 
-        border-radius: 16px 16px 0 0;
-      }
+      .card span { font-size: 1.1rem; }
+      #board { gap: 12px; padding: 12px; border-radius: 0 0 16px 16px; }
+      #game-header { height: 130px; border-radius: 16px 16px 0 0; }
       #opponent-target-display p { font-size: 0.9rem; }
       #opponent-target-content span { font-size: 1.2rem; }
-      #opponent-target-content img { 
-        height: 100px; 
-        width: auto;
-      }
+      #opponent-target-content img { height: 100px; width: auto; }
     }
   </style>
 </head>
@@ -289,6 +203,7 @@
   <div class="container">
     <h1 class="hide-in-game" id="main-title">Wer ist es?</h1>
 
+    <!-- 1. Modus Auswahl -->
     <div id="view-mode-select" class="view active-view">
       <div class="setup-card">
         <h2 style="margin-top:0;">Wähle Modus</h2>
@@ -297,6 +212,7 @@
       </div>
     </div>
 
+    <!-- 2. Setup (Name & Bilder) -->
     <div id="view-setup" class="view">
       <div class="setup-card">
         <h2 id="setup-title" style="margin-top:0;">Dein Profil</h2>
@@ -307,19 +223,38 @@
           <div id="custom-grid"></div>
         </div>
 
-        <button class="btn-action" id="btn-join-lobby">Lobby beitreten</button>
+        <button class="btn-action" id="btn-go-to-lobbies">Weiter zur Lobby-Auswahl</button>
       </div>
     </div>
 
+    <!-- 3. NEU: Lobby Liste -->
+    <div id="view-lobby-list" class="view">
+      <div class="setup-card" style="max-width: 600px;">
+        <h2 style="margin-top:0;">Lobbys</h2>
+        
+        <!-- Lobby erstellen -->
+        <div style="margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 20px;">
+          <input type="text" id="new-room-name" placeholder="Name für neue Lobby" style="margin-bottom: 10px;" />
+          <button class="btn-basic" id="btn-create-room" style="width: 100%; margin: 0;">Lobby erstellen</button>
+        </div>
+        
+        <!-- Vorhandene Lobbys -->
+        <h3 style="text-align: left; margin-top: 0;">Offene Spiele</h3>
+        <ul id="active-lobbies-list" style="list-style: none; padding: 0; margin: 0;"></ul>
+      </div>
+    </div>
+
+    <!-- 4. Wartebereich im Raum -->
     <div id="view-lobby" class="view">
       <div class="setup-card">
-        <h2 style="margin-top:0;">Lobby</h2>
+        <h2 id="current-room-title" style="margin-top:0;">Raum</h2>
         <div id="lobby-status" style="margin-bottom: 10px; color: var(--text-muted);">Verbinde...</div>
         <ul id="player-list" style="list-style: none; padding: 0;"></ul>
         <button class="btn-action" id="btn-start-multiplayer" style="display:none;">Spiel starten</button>
       </div>
     </div>
 
+    <!-- 5. Das Spiel -->
     <div id="view-game" class="view">
       <div id="game-header">
         <div id="status-bar">Warte auf Zuweisung...</div>
@@ -335,19 +270,21 @@
   <div id="win-screen">
     <h1>Gewonnen!</h1>
     <h2 id="winner-name-display"></h2>
-    <button id="btn-restart" style="display:none;">Neue Runde</button>
+    <button id="btn-restart" style="display:none;">Zurück zur Lobby</button>
   </div>
 
   <script>
     const pusher = new Pusher('3df7da082bcfbaaacad9', { cluster: 'eu', authEndpoint: '/api/auth' });
-    const channel = pusher.subscribe('private-game-room');
+    let channel = null; // Channel wird jetzt dynamisch gesetzt
     
     const SUPABASE_URL = 'https://vqqtiskjqyemzhelmqki.supabase.co';
     // TRAGE HIER DEINEN RICHTIGEN KEY EIN:
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxcXRpc2tqcXllbXpoZWxtcWkiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc4NjA3OTI2NCwiZXhwIjoyMTAxNjU1MjY0f.-bofHdro5SOiXVioD4eJkSl69_qiMj2ExCCnhb0TKSQ'; 
+    const SUPABASE_KEY = 'DEIN_KOPIERTER_KEY_HIER_EINTRAGEN'; 
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let myName = '';
+    let isAdmin = false; 
+    let currentRoom = '';
     let selectedMode = ''; 
     let myPool = [];
     let allBasicFiles = [];
@@ -370,7 +307,6 @@
               }
             }).catch(() => {});
           } else if (document.documentElement.webkitRequestFullscreen) {
-            // Fallback für iPad/Mac Safari
             document.documentElement.webkitRequestFullscreen();
           }
         }
@@ -378,6 +314,7 @@
         console.log("Vollbild auf diesem Gerät nicht unterstützt.");
       }
     }
+
     document.getElementById('btn-fullscreen').addEventListener('click', forceFullscreen);
 
     function toggleGameUI(inGame) {
@@ -412,16 +349,7 @@
     });
 
     async function loadUserCustomSelection(name) {
-      const { data, error } = await supabaseClient
-        .from('user_selections')
-        .select('selected_images')
-        .eq('player_name', name)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error("Lade-Fehler:", error.message);
-      }
-
+      const { data, error } = await supabaseClient.from('user_selections').select('selected_images').eq('player_name', name).single();
       const selectedSet = data ? data.selected_images : [...allBasicFiles];
       const grid = document.getElementById('custom-grid');
       grid.innerHTML = '';
@@ -429,20 +357,14 @@
       allBasicFiles.forEach(file => {
         const div = document.createElement('div');
         div.className = 'card';
-        
-        if (selectedSet.includes(file)) {
-          div.classList.add('custom-selected');
-        } else {
-          div.classList.add('custom-unselected');
-        }
+        if (selectedSet.includes(file)) div.classList.add('custom-selected');
+        else div.classList.add('custom-unselected');
 
         div.innerHTML = getCardHTML(file);
-        
         div.addEventListener('click', () => {
           div.classList.toggle('custom-selected');
           div.classList.toggle('custom-unselected');
         });
-        
         grid.appendChild(div);
       });
     }
@@ -450,19 +372,10 @@
     async function saveUserCustomSelection(name) {
       const gridCards = document.querySelectorAll('#custom-grid .card');
       const selectedFiles = [];
-      
       gridCards.forEach((card, index) => {
-        if (card.classList.contains('custom-selected')) {
-          selectedFiles.push(allBasicFiles[index]);
-        }
+        if (card.classList.contains('custom-selected')) selectedFiles.push(allBasicFiles[index]);
       });
-      
-      const { error } = await supabaseClient.from('user_selections').upsert({ player_name: name, selected_images: selectedFiles });
-      
-      if (error) {
-        console.error("Speicher-Fehler:", error.message);
-        alert("Fehler beim Speichern in der Datenbank: " + error.message + "\n\nPrüfe deinen API-Key und die RLS-Richtlinien.");
-      }
+      await supabaseClient.from('user_selections').upsert({ player_name: name, selected_images: selectedFiles });
     }
 
     function shuffleArray(array) {
@@ -498,13 +411,11 @@
     function renderBoard(poolToRender, clickable = true) {
       const board = document.getElementById('board');
       board.innerHTML = '';
-      
       poolToRender.forEach((item, index) => {
         const div = document.createElement('div');
         div.className = 'card';
         div.dataset.index = index;
         div.innerHTML = getCardHTML(item);
-
         if (clickable) div.addEventListener('click', () => handleCardClick(div, item));
         board.appendChild(div);
       });
@@ -512,24 +423,117 @@
 
     function setStatus(text) { document.getElementById('status-bar').innerText = text; }
 
-    document.getElementById('btn-join-lobby').addEventListener('click', async () => {
+    // --- NEU: LOBBY LISTE & ADMIN LOGIK ---
+
+    document.getElementById('btn-go-to-lobbies').addEventListener('click', async () => {
       forceFullscreen(); 
-      
       const nameInput = document.getElementById('player-name').value.trim();
       if (!nameInput) return alert('Bitte Namen eingeben');
       
       myName = nameInput;
+      // Admin Check:
+      if (myName.toLowerCase() === 'nate') { isAdmin = true; }
+
       if (selectedMode === 'custom') await saveUserCustomSelection(myName);
       myPool = await generatePool(selectedMode);
       
-      players = [{ name: myName, pool: myPool }];
-      isHost = true; 
+      switchView('view-lobby-list');
+      loadLobbies();
+    });
+
+    async function loadLobbies() {
+      const { data, error } = await supabaseClient.from('active_lobbies').select('*');
+      const list = document.getElementById('active-lobbies-list');
+      list.innerHTML = '';
       
+      if (data && data.length > 0) {
+        data.forEach(room => {
+          const li = document.createElement('li');
+          li.className = 'player-list-item';
+          
+          li.innerHTML = `
+            <div class="lobby-info">
+              <span class="lobby-title">${room.room_name}</span>
+              <span class="lobby-host">Host: ${room.created_by}</span>
+            </div>
+          `;
+          
+          const btnGroup = document.createElement('div');
+          
+          const joinBtn = document.createElement('button');
+          joinBtn.innerText = 'Beitreten';
+          joinBtn.className = 'btn-action';
+          joinBtn.style.margin = '0';
+          joinBtn.style.padding = '0.5rem 1rem';
+          joinBtn.onclick = () => joinRoom(room.room_name, false);
+          btnGroup.appendChild(joinBtn);
+
+          // Admin darf Räume löschen
+          if (isAdmin) {
+             const delBtn = document.createElement('button');
+             delBtn.innerText = 'X';
+             delBtn.className = 'btn-danger';
+             delBtn.style.marginLeft = '10px';
+             delBtn.onclick = async () => {
+               await supabaseClient.from('active_lobbies').delete().eq('room_name', room.room_name);
+               loadLobbies();
+             };
+             btnGroup.appendChild(delBtn);
+          }
+
+          li.appendChild(btnGroup);
+          list.appendChild(li);
+        });
+      } else {
+        list.innerHTML = '<li style="color: gray; font-size: 0.9rem;">Keine aktiven Spiele. Erstelle ein neues!</li>';
+      }
+    }
+
+    document.getElementById('btn-create-room').addEventListener('click', async () => {
+      const rName = document.getElementById('new-room-name').value.trim();
+      if(!rName) return alert('Bitte Raumnamen eingeben');
+
+      // In Datenbank schreiben
+      const { error } = await supabaseClient.from('active_lobbies').insert({ room_name: rName, created_by: myName });
+      if(error && error.code !== '23505') { 
+         return alert("Fehler beim Erstellen der Lobby: " + error.message);
+      }
+
+      joinRoom(rName, true);
+    });
+
+    function joinRoom(roomName, asHost) {
+      currentRoom = roomName.replace(/[^a-zA-Z0-9-_]/g, '-'); // Safe Channel String
+      isHost = asHost; 
+      players = [{ name: myName, pool: myPool }];
+      
+      document.getElementById('current-room-title').innerText = "Raum: " + roomName;
+      
+      // Dynamischen Channel binden
+      channel = pusher.subscribe('private-room-' + currentRoom);
+      
+      channel.bind('client-join', (data) => {
+        if (!players.find(p => p.name === data.name)) {
+          players.push(data);
+          updateLobbyUI();
+        }
+        if (isHost || isAdmin) channel.trigger('client-sync-lobby', { players: players });
+      });
+
+      channel.bind('client-sync-lobby', (data) => {
+        if(!isHost) players = data.players;
+        updateLobbyUI();
+      });
+
+      channel.bind('client-start-selection', (data) => startSelectionPhase(data.assignments));
+      channel.bind('client-target-selected', (data) => processSelection(data));
+      channel.bind('client-winner', (data) => showWinScreen(data.name));
+      channel.bind('client-restart', () => resetGameToLobby());
+
       switchView('view-lobby');
       updateLobbyUI();
-      
       channel.trigger('client-join', { name: myName, pool: myPool });
-    });
+    }
 
     function updateLobbyUI() {
       const list = document.getElementById('player-list');
@@ -542,26 +546,14 @@
       });
       
       document.getElementById('lobby-status').innerText = `Spieler in Lobby: ${players.length}`;
-      document.getElementById('btn-start-multiplayer').style.display = (isHost && players.length >= 2) ? 'block' : 'none';
+      
+      // Admin darf Spiel IMMER starten, Host nur wenn er Host ist.
+      const canStart = (isHost || isAdmin) && players.length >= 2;
+      document.getElementById('btn-start-multiplayer').style.display = canStart ? 'block' : 'none';
     }
-
-    channel.bind('client-join', (data) => {
-      if (!players.find(p => p.name === data.name)) {
-        players.push(data);
-        updateLobbyUI();
-      }
-      if (isHost) channel.trigger('client-sync-lobby', { players: players });
-    });
-
-    channel.bind('client-sync-lobby', (data) => {
-      isHost = false; 
-      players = data.players;
-      updateLobbyUI();
-    });
 
     document.getElementById('btn-start-multiplayer').addEventListener('click', () => {
       forceFullscreen();
-      
       let assignments = [];
       let shuffledPlayers = shuffleArray([...players]);
       
@@ -575,7 +567,7 @@
       startSelectionPhase(assignments);
     });
 
-    channel.bind('client-start-selection', (data) => startSelectionPhase(data.assignments));
+    // --- SPIEL LOGIK ---
 
     function startSelectionPhase(assignments) {
       myAssignment = assignments.find(a => a.pickerName === myName);
@@ -602,13 +594,10 @@
       }
     }
 
-    channel.bind('client-target-selected', (data) => processSelection(data));
-
     function processSelection(data) {
       selectionsReady++;
       if (data.guesserName === myName) cardIGuess = data.targetItem;
       if (data.pickerName === myName) cardToDefend = data.targetItem;
-      
       if (selectionsReady === players.length) startGamePhase();
     }
 
@@ -635,20 +624,16 @@
       }
     }
 
-    channel.bind('client-winner', (data) => showWinScreen(data.name));
-
     function showWinScreen(winnerName) {
       document.getElementById('win-screen').style.display = 'flex';
       document.getElementById('winner-name-display').innerText = `${winnerName} hat gewonnen!`;
-      if (isHost) document.getElementById('btn-restart').style.display = 'block';
+      if (isHost || isAdmin) document.getElementById('btn-restart').style.display = 'block';
     }
 
     document.getElementById('btn-restart').addEventListener('click', () => {
       channel.trigger('client-restart', {});
       resetGameToLobby();
     });
-
-    channel.bind('client-restart', () => resetGameToLobby());
 
     async function resetGameToLobby() {
       document.getElementById('win-screen').style.display = 'none';
@@ -665,7 +650,7 @@
       
       switchView('view-lobby');
       updateLobbyUI();
-      if (isHost) channel.trigger('client-sync-lobby', { players: players });
+      if (isHost || isAdmin) channel.trigger('client-sync-lobby', { players: players });
     }
   </script>
 </body>
