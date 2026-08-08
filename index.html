@@ -142,21 +142,31 @@
     
     #opponent-target-content span { font-size: 0.8rem; font-weight: bold; }
 
-    #board { flex: 1; display: grid; gap: 4px; padding: 4px; background: #000; box-sizing: border-box; min-height: 0; }
+    /* CORE FIX: Spielfeld zentriert Elemente */
+    #board { flex: 1; display: grid; gap: 4px; padding: 4px; background: #000; box-sizing: border-box; min-height: 0; place-items: center; }
 
-    @media (orientation: portrait) { #board { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(5, minmax(0, 1fr)); } }
-    @media (orientation: landscape) { #board { grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(4, minmax(0, 1fr)); } }
-
+    /* CORE FIX: Basis-Karte ohne feste Höhe/Breite, die Medien-Queries übernehmen die Kontrolle */
     .card {
       background-color: var(--card-bg); border: 2px solid var(--border-color); border-radius: 8px;
       cursor: pointer; display: flex; flex-direction: column; align-items: center;
-      justify-content: space-between; overflow: hidden; width: 100%; height: 100%; position: relative;
+      justify-content: space-between; overflow: hidden; position: relative;
     }
-    .card img { width: 100%; height: 75%; aspect-ratio: 4 / 5; object-fit: cover; }
+    .card img { width: 100%; height: 75%; object-fit: cover; }
     .card span { 
       height: 25%; width: 100%; display: flex; align-items: center; justify-content: center; 
       font-weight: 600; font-size: 0.75rem; color: var(--text-main); box-sizing: border-box; 
       padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+    }
+
+    /* CORE FIX: Hochformat (Handy) - Karte füllt Breite, Höhe ergibt sich aus 4:5 */
+    @media (orientation: portrait) { 
+      #board { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(5, minmax(0, 1fr)); } 
+      .card { width: 100%; height: auto; max-height: 100%; aspect-ratio: 4 / 5; }
+    }
+    /* CORE FIX: Querformat (PC/Landscape) - Karte füllt Höhe, Breite ergibt sich aus 4:5 */
+    @media (orientation: landscape) { 
+      #board { grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(4, minmax(0, 1fr)); } 
+      .card { height: 100%; width: auto; max-width: 100%; aspect-ratio: 4 / 5; }
     }
     
     .card.custom-unselected { opacity: 0.3; filter: grayscale(80%); }
@@ -534,7 +544,6 @@
       switchView('view-lobby');
       updateLobbyUI();
       
-      // FIX FÜR DAS PUSHER-TIMING:
       channel.bind('pusher:subscription_succeeded', () => {
         channel.trigger('client-join', { name: myName, pool: myPool });
       });
