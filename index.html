@@ -116,7 +116,7 @@
 
     .btn-turn { padding: 0.5rem 1.2rem; font-size: 0.85rem; margin: 0 5px; border-radius: 10px; }
 
-    input {
+    input, select {
       background: var(--card-bg);
       border: 2px solid var(--card-border);
       backdrop-filter: blur(10px);
@@ -133,7 +133,7 @@
       box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
       transition: border-color 0.2s, background-color 0.3s, color 0.3s;
     }
-    input:focus { border-color: #4facfe; }
+    input:focus, select:focus { border-color: #4facfe; }
 
     .view { display: none; animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); flex-direction: column; padding: 10px; width: 100%; box-sizing: border-box; }
     .active-view { display: flex; align-items: center; }
@@ -165,8 +165,10 @@
       border-bottom: 2px solid #ff0844;
       padding: 8px;
       justify-content: center;
+      align-items: center;
       gap: 10px;
       z-index: 51;
+      flex-wrap: wrap;
     }
 
     #game-header {
@@ -330,6 +332,13 @@
       <!-- Admin Bar -->
       <div id="admin-bar">
          <button id="btn-admin-kick-inactive" class="btn-danger" style="font-size: 0.75rem; padding: 6px 12px; margin: 0; display: none;">Inaktive Kicken & Starten</button>
+         
+         <div id="admin-midgame-controls" style="display: none; align-items: center; gap: 10px;">
+             <select id="admin-player-select" style="font-size: 0.75rem; padding: 4px; margin: 0; width: 120px; border-radius: 8px;"></select>
+             <button id="btn-admin-kick-midgame" class="btn-danger" style="font-size: 0.75rem; padding: 6px 12px; margin: 0;">Kicken</button>
+             <button id="btn-admin-skip-turn" class="btn-custom" style="font-size: 0.75rem; padding: 6px 12px; margin: 0;">Zug überspringen</button>
+         </div>
+
          <button id="btn-admin-abort" class="btn-danger" style="font-size: 0.75rem; padding: 6px 12px; margin: 0;">Spiel abbrechen (Reset)</button>
       </div>
 
@@ -441,7 +450,7 @@
     let activePlayers = []; 
     let currentTurnName = '';
     let ranking = [];
-    let readyPlayers = []; // Trackt wer im Screen schon gewählt hat
+    let readyPlayers = [];
 
     function getBaseName(filename) { return filename.split('/').pop().split('.')[0].replace(/_\d+$/, ''); }
     function getDisplayName(filename) { let name = getBaseName(filename); return name.charAt(0).toUpperCase() + name.slice(1); }
@@ -464,9 +473,25 @@
       if (isAdmin && inGame) {
           document.getElementById('admin-bar').style.display = 'flex';
           document.getElementById('btn-admin-kick-inactive').style.display = (gamePhase === 'selecting') ? 'block' : 'none';
+          document.getElementById('admin-midgame-controls').style.display = (gamePhase === 'playing') ? 'flex' : 'none';
+          updateAdminPlayerSelect();
       } else {
           document.getElementById('admin-bar').style.display = 'none';
       }
+    }
+
+    function updateAdminPlayerSelect() {
+        if(!isAdmin) return;
+        const select = document.getElementById('admin-player-select');
+        select.innerHTML = '';
+        activePlayers.forEach(p => {
+            if(p !== myName) {
+                const opt = document.createElement('option');
+                opt.value = p; opt.innerText = p;
+                select.appendChild(opt);
+            }
+        });
+        document.getElementById('btn-admin-kick-midgame').disabled = (select.options.length === 0);
     }
 
     fetch('/api/getImages').then(res => res.json()).then(files => {
@@ -555,7 +580,7 @@
       });
     }
 
-    // --- SESSION RECOVERY LOGIK ---
+    // --- SESSION RECOVERY LOGIK (sessionStorage für Multi-Tab) ---
     function saveSessionState() {
       if (!myName || !currentRoom) return;
       const eliminated = Array.from(document.querySelectorAll('.card.eliminated')).map(c => parseInt(c.dataset.index));
@@ -564,11 +589,11 @@
         globalAssignments, myAssignment, cardIGuess, cardToDefend, activePlayers, 
         currentTurnName, ranking, eliminated, selectionsReady, selectedMode, readyPlayers
       };
-      localStorage.setItem('werbinich_session', JSON.stringify(state));
+      sessionStorage.setItem('werbinich_session', JSON.stringify(state));
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-      const saved = localStorage.getItem('werbinich_session');
+      const saved = sessionStorage.getItem('werbinich_session');
       if (saved) {
         try {
           const state = JSON.parse(saved);
@@ -619,12 +644,13 @@
       channel.bind('client-target-selected', (data) => processSelection(data));
       channel.bind('client-next-turn', (data) => setNextTurn(data.nextPlayer));
       channel.bind('client-player-finished', (data) => processPlayerFinish(data));
+      channel.bind('client-reassign', (data) => processReassign(data));
       channel.bind('client-restart', () => resetGameToLobby());
       
       channel.bind('client-kicked', (data) => {
         if (data.name === myName) {
            alert("Du wurdest vom Master aus dem Spiel geworfen.");
-           localStorage.removeItem('werbinich_session');
+           sessionStorage.removeItem('werbinich_session');
            location.reload();
         }
       });
@@ -664,6 +690,60 @@
     document.getElementById('btn-admin-abort').addEventListener('click', () => {
       channel.trigger('client-restart', {});
       resetGameToLobby();
+    });
+
+    // Smarte Reassignment Logik beim Kicken mid-game
+    document.getElementById('btn-admin-kick-midgame').addEventListener('click', () => {
+      const playerToKick = document.getElementById('admin-player-select').value;
+      if(!playerToKick) return;
+      
+      const a1 = globalAssignments.find(a => a.pickerName === playerToKick); // Der Gekickte hat für X gewählt
+      const a2 = globalAssignments.find(a => a.guesserName === playerToKick); // Y hat für den Gekickten gewählt
+
+      if (a1 && a2) {
+          const orphanedGuesser = a1.guesserName;
+          const freePicker = a2.pickerName;
+          const itemToDefend = a1.targetItem; // Das Bild, das der Gekickte für X ausgesucht hatte
+
+          a1.pickerName = freePicker; // Kette schließen
+
+          channel.trigger('client-reassign', {
+              newPicker: freePicker,
+              guesserName: orphanedGuesser,
+              targetItem: itemToDefend,
+              assignments: globalAssignments
+          });
+          processReassign({ newPicker: freePicker, guesserName: orphanedGuesser, targetItem: itemToDefend, assignments: globalAssignments });
+      }
+      
+      channel.trigger('client-kicked', { name: playerToKick });
+      channel.trigger('client-player-finished', { name: playerToKick, win: false });
+      processPlayerFinish({ name: playerToKick, win: false });
+      
+      if(currentTurnName === playerToKick && activePlayers.length > 0) {
+          calculateNextTurn();
+      }
+    });
+
+    function processReassign(data) {
+        globalAssignments = data.assignments;
+        if (myName === data.newPicker) {
+            cardToDefend = data.targetItem;
+            myAssignment = globalAssignments.find(a => a.pickerName === myName);
+            if (gamePhase === 'playing') {
+                document.getElementById('target-player-name').innerText = `${data.guesserName} sucht:`;
+                document.getElementById('target-image-container').innerHTML = getCardHTML(cardToDefend);
+                document.getElementById('opponent-target-content').classList.add('concealed'); 
+            }
+        }
+        if (gamePhase === 'playing') {
+            updateTurnUI();
+        }
+        saveSessionState();
+    }
+
+    document.getElementById('btn-admin-skip-turn').addEventListener('click', () => {
+       calculateNextTurn();
     });
     // ------------------------
 
@@ -764,6 +844,11 @@
     function processSelection(data) {
       if (!readyPlayers.includes(data.pickerName)) readyPlayers.push(data.pickerName);
       selectionsReady++;
+      
+      // Speichere Target für evtl. spätere Admin-Reassignments
+      let assign = globalAssignments.find(a => a.pickerName === data.pickerName && a.guesserName === data.guesserName);
+      if (assign) assign.targetItem = data.targetItem;
+
       if (data.guesserName === myName) cardIGuess = data.targetItem;
       if (data.pickerName === myName) cardToDefend = data.targetItem;
       if (selectionsReady === players.length) startGamePhase();
@@ -782,7 +867,7 @@
       content.innerHTML = getCardHTML(cardToDefend);
       document.getElementById('opponent-target-content').classList.remove('revealed'); 
 
-      toggleGameUI(true); // Aktualisiert Admin Bar
+      toggleGameUI(true); 
       updateTurnUI();
       saveSessionState();
     }
@@ -797,6 +882,8 @@
 
       const currentAssignment = globalAssignments.find(a => a.guesserName === currentTurnName);
       const personToAsk = currentAssignment ? currentAssignment.pickerName : '';
+
+      updateAdminPlayerSelect(); 
 
       if (!activePlayers.includes(myName)) {
         statusText.innerText = `Zuschauer 👀`;
@@ -907,6 +994,7 @@
 
     function processPlayerFinish(data) {
       activePlayers = activePlayers.filter(name => name !== data.name);
+      updateAdminPlayerSelect();
       
       if (!ranking.find(r => r.name === data.name)) {
         ranking.push({ name: data.name, win: data.win });
@@ -976,6 +1064,8 @@
       myPool = await generatePool(selectedMode);
       let me = players.find(p => p.name === myName);
       if(me) me.pool = myPool;
+      
+      sessionStorage.removeItem('werbinich_session'); // Reset State
       
       switchView('view-lobby');
       updateLobbyUI();
