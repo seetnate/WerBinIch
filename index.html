@@ -142,42 +142,21 @@
     
     #opponent-target-content span { font-size: 0.8rem; font-weight: bold; }
 
-    #board { 
-      flex: 1; 
-      display: grid; 
-      gap: 4px; 
-      padding: 4px; 
-      background: #000; 
-      box-sizing: border-box; 
-      min-height: 0; 
-    }
+    #board { flex: 1; display: grid; gap: 4px; padding: 4px; background: #000; box-sizing: border-box; min-height: 0; }
 
-    @media (orientation: portrait) { 
-      #board { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(5, minmax(0, 1fr)); } 
-    }
-    
-    @media (orientation: landscape) { 
-      #board { grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(4, minmax(0, 1fr)); } 
-    }
+    @media (orientation: portrait) { #board { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(5, minmax(0, 1fr)); } }
+    @media (orientation: landscape) { #board { grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(4, minmax(0, 1fr)); } }
+
     .card {
       background-color: var(--card-bg); border: 2px solid var(--border-color); border-radius: 8px;
       cursor: pointer; display: flex; flex-direction: column; align-items: center;
       justify-content: space-between; overflow: hidden; width: 100%; height: 100%; position: relative;
     }
-    .card img { width: 100%; height: 75%; object-fit: cover; }
+    .card img { width: 100%; height: 75%; aspect-ratio: 4 / 5; object-fit: cover; }
     .card span { 
-      height: 25%; 
-      width: 100%; 
-      display: flex; 
-      align-items: center; 
-      justify-content: center; 
-      font-weight: 600; 
-      font-size: 0.75rem; 
-      color: var(--text-main); 
-      box-sizing: border-box;
-      padding: 0 4px;
-      white-space: nowrap;
-      overflow: hidden;
+      height: 25%; width: 100%; display: flex; align-items: center; justify-content: center; 
+      font-weight: 600; font-size: 0.75rem; color: var(--text-main); box-sizing: border-box; 
+      padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
     }
     
     .card.custom-unselected { opacity: 0.3; filter: grayscale(80%); }
@@ -300,7 +279,7 @@
 
   <script>
     const pusher = new Pusher('3df7da082bcfbaaacad9', { cluster: 'eu', authEndpoint: '/api/auth' });
-    let channel = null; // Channel wird jetzt dynamisch gesetzt
+    let channel = null; 
     
     const SUPABASE_URL = 'https://vqqtiskjqyemzhelmqki.supabase.co';
     // TRAGE HIER DEINEN RICHTIGEN KEY EIN:
@@ -448,15 +427,12 @@
 
     function setStatus(text) { document.getElementById('status-bar').innerText = text; }
 
-    // --- NEU: LOBBY LISTE & ADMIN LOGIK ---
-
     document.getElementById('btn-go-to-lobbies').addEventListener('click', async () => {
       forceFullscreen(); 
       const nameInput = document.getElementById('player-name').value.trim();
       if (!nameInput) return alert('Bitte Namen eingeben');
       
       myName = nameInput;
-      // Admin Check:
       if (myName.toLowerCase() === 'nate') { isAdmin = true; }
 
       if (selectedMode === 'custom') await saveUserCustomSelection(myName);
@@ -493,7 +469,6 @@
           joinBtn.onclick = () => joinRoom(room.room_name, false);
           btnGroup.appendChild(joinBtn);
 
-          // Admin darf Räume löschen
           if (isAdmin) {
              const delBtn = document.createElement('button');
              delBtn.innerText = 'X';
@@ -518,7 +493,6 @@
       const rName = document.getElementById('new-room-name').value.trim();
       if(!rName) return alert('Bitte Raumnamen eingeben');
 
-      // In Datenbank schreiben
       const { error } = await supabaseClient.from('active_lobbies').insert({ room_name: rName, created_by: myName });
       if(error && error.code !== '23505') { 
          return alert("Fehler beim Erstellen der Lobby: " + error.message);
@@ -528,13 +502,15 @@
     });
 
     function joinRoom(roomName, asHost) {
-      currentRoom = roomName.replace(/[^a-zA-Z0-9-_]/g, '-'); // Safe Channel String
+      currentRoom = roomName.replace(/[^a-zA-Z0-9-_]/g, '-'); 
       isHost = asHost; 
       players = [{ name: myName, pool: myPool }];
       
       document.getElementById('current-room-title').innerText = "Raum: " + roomName;
       
-      // Dynamischen Channel binden
+      if (channel) {
+        pusher.unsubscribe(channel.name);
+      }
       channel = pusher.subscribe('private-room-' + currentRoom);
       
       channel.bind('client-join', (data) => {
@@ -557,9 +533,11 @@
 
       switchView('view-lobby');
       updateLobbyUI();
+      
+      // FIX FÜR DAS PUSHER-TIMING:
       channel.bind('pusher:subscription_succeeded', () => {
-  channel.trigger('client-join', { name: myName, pool: myPool });
-});
+        channel.trigger('client-join', { name: myName, pool: myPool });
+      });
     }
 
     function updateLobbyUI() {
@@ -574,7 +552,6 @@
       
       document.getElementById('lobby-status').innerText = `Spieler in Lobby: ${players.length}`;
       
-      // Admin darf Spiel IMMER starten, Host nur wenn er Host ist.
       const canStart = (isHost || isAdmin) && players.length >= 2;
       document.getElementById('btn-start-multiplayer').style.display = canStart ? 'block' : 'none';
     }
@@ -593,8 +570,6 @@
       channel.trigger('client-start-selection', { assignments });
       startSelectionPhase(assignments);
     });
-
-    // --- SPIEL LOGIK ---
 
     function startSelectionPhase(assignments) {
       myAssignment = assignments.find(a => a.pickerName === myName);
