@@ -114,8 +114,7 @@
     .btn-action { background: var(--accent-green); width: 100%; max-width: 320px; margin: 1rem 0; color: #0a4d2e; }
     .btn-danger { background: var(--accent-danger); font-size: 0.9rem; padding: 0.5rem 1rem; margin: 0; box-shadow: none;}
 
-    /* Spezifische In-Game Buttons */
-    .btn-turn { padding: 0.6rem 1.2rem; font-size: 0.9rem; margin: 0 5px; border-radius: 10px; }
+    .btn-turn { padding: 0.5rem 1.2rem; font-size: 0.85rem; margin: 0 5px; border-radius: 10px; }
 
     input {
       background: var(--card-bg);
@@ -159,7 +158,6 @@
 
     #custom-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 12px; margin-top: 1.5rem; }
 
-    /* Header Anpassungen für Turn-System */
     #game-header {
       position: sticky;
       top: 0;
@@ -179,7 +177,8 @@
     }
 
     #turn-container { flex: 1; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; }
-    #turn-status { font-size: 1.1rem; font-weight: 900; color: var(--text-main); margin-bottom: 5px; transition: color 0.3s; }
+    #turn-status { font-size: 1.15rem; font-weight: 900; color: var(--text-main); margin-bottom: 2px; transition: color 0.3s; }
+    #turn-ask { font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-bottom: 8px; transition: color 0.3s; }
     #turn-actions { display: flex; }
 
     #opponent-target-display {
@@ -194,7 +193,6 @@
     #opponent-target-content img { height: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
     #opponent-target-content span { font-size: 0.95rem; font-weight: 900; color: #0f1015; }
 
-    /* Absoluter Sichtschutz */
     #target-overlay {
       position: absolute;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -343,6 +341,7 @@
       <div id="game-header">
         <div id="turn-container">
           <div id="turn-status">Lade...</div>
+          <div id="turn-ask"></div>
           <div id="turn-actions" style="display:none;">
             <button id="btn-end-turn" class="btn-basic btn-turn">Fertig</button>
             <button id="btn-solve" class="btn-custom btn-turn">Lösen</button>
@@ -423,14 +422,15 @@
     let players = [];
     let isHost = false;
     let myAssignment = null; 
+    let globalAssignments = [];
     let cardIGuess = null;     
     let cardToDefend = null;   
     let selectionsReady = 0;
     
-    let gamePhase = 'waiting'; // waiting, selecting, playing
+    let gamePhase = 'waiting'; 
     let isMyTurn = false;
     let isGuessingMode = false;
-    let activePlayers = []; // Namen der Spieler, die noch nicht gelöst haben
+    let activePlayers = []; 
     let currentTurnName = '';
     let ranking = [];
 
@@ -611,10 +611,12 @@
     });
 
     function startSelectionPhase(assignments) {
+      globalAssignments = assignments;
       myAssignment = assignments.find(a => a.pickerName === myName);
       gamePhase = 'selecting'; selectionsReady = 0;
       switchView('view-game');
       document.getElementById('turn-status').innerText = `Wähle das Bild für: ${myAssignment.guesserName}`;
+      document.getElementById('turn-ask').innerText = '';
       renderBoard(myAssignment.guesserPool);
     }
 
@@ -628,8 +630,6 @@
     function startGamePhase() {
       gamePhase = 'playing';
       activePlayers = players.map(p => p.name);
-      
-      // Startspieler ermitteln
       currentTurnName = activePlayers[0]; 
       
       renderBoard(myPool);
@@ -638,21 +638,26 @@
       
       const content = document.getElementById('target-image-container');
       content.innerHTML = getCardHTML(cardToDefend);
-      document.getElementById('opponent-target-content').classList.remove('revealed'); // Verstecke Bild sicherheitshalber
+      document.getElementById('opponent-target-content').classList.remove('revealed'); 
 
       updateTurnUI();
     }
 
     function updateTurnUI() {
       const statusText = document.getElementById('turn-status');
+      const askText = document.getElementById('turn-ask');
       const actions = document.getElementById('turn-actions');
       const board = document.getElementById('board');
       isGuessingMode = false;
       board.classList.remove('guessing-mode');
 
-      // Prüfe, ob ich selbst schon fertig bin
+      const currentAssignment = globalAssignments.find(a => a.guesserName === currentTurnName);
+      const personToAsk = currentAssignment ? currentAssignment.pickerName : '';
+
       if (!activePlayers.includes(myName)) {
-        statusText.innerText = `Zuschauer-Modus`;
+        statusText.innerText = `Zuschauer 👀`;
+        statusText.style.color = 'var(--text-muted)';
+        askText.innerText = `${currentTurnName} fragt ${personToAsk}`;
         actions.style.display = 'none';
         return;
       }
@@ -662,16 +667,17 @@
       if (isMyTurn) {
         statusText.innerText = `Du bist am Zug!`;
         statusText.style.color = '#38ef7d';
+        askText.innerText = `👉 Frag: ${personToAsk}`;
         actions.style.display = 'flex';
         document.getElementById('btn-solve').innerText = 'Lösen';
       } else {
         statusText.innerText = `Zug: ${currentTurnName}`;
         statusText.style.color = 'var(--text-main)';
+        askText.innerText = `👉 Fragt: ${personToAsk}`;
         actions.style.display = 'none';
       }
     }
 
-    // --- TURN BUTTON LOGIC ---
     document.getElementById('btn-end-turn').addEventListener('click', () => {
       if (!isMyTurn) return;
       calculateNextTurn();
@@ -686,11 +692,12 @@
       
       if (isGuessingMode) {
         solveBtn.innerText = 'Abbrechen';
-        document.getElementById('turn-status').innerText = 'Wähle deinen finalen Tipp!';
+        document.getElementById('turn-status').innerText = 'Finaler Tipp!';
         document.getElementById('turn-status').style.color = '#ff0844';
+        document.getElementById('turn-ask').innerText = 'Klicke auf deine eigene Karte';
         board.classList.add('guessing-mode');
       } else {
-        updateTurnUI(); // Reset
+        updateTurnUI(); 
       }
     });
 
@@ -722,33 +729,31 @@
       if (gamePhase === 'selecting') {
         document.querySelectorAll('.card').forEach(c => c.style.pointerEvents = 'none');
         cardElement.classList.add('selected-target');
-        document.getElementById('turn-status').innerText = 'Warte auf die anderen Spieler...';
+        document.getElementById('turn-status').innerText = 'Warte auf Mitspieler...';
+        document.getElementById('turn-ask').innerText = '';
         channel.trigger('client-target-selected', { pickerName: myName, guesserName: myAssignment.guesserName, targetItem: item });
         processSelection({ pickerName: myName, guesserName: myAssignment.guesserName, targetItem: item });
         return;
       } 
       
       if (gamePhase === 'playing') {
-        if (!activePlayers.includes(myName)) return; // Ausgeschiedene dürfen nichts mehr klicken
+        if (!activePlayers.includes(myName)) return; 
 
         if (isGuessingMode && isMyTurn) {
-          if (cardElement.classList.contains('eliminated')) return; // Bereits umgeklappte ignorieren
+          if (cardElement.classList.contains('eliminated')) return; 
           
-          // LÖSUNG AUSWERTEN
           const isCorrect = (item === cardIGuess);
           channel.trigger('client-player-finished', { name: myName, win: isCorrect });
           processPlayerFinish({ name: myName, win: isCorrect });
           
           if (activePlayers.length > 0) calculateNextTurn();
         } else {
-          // Normales Umklappen (lokal, erlaubt für jeden jederzeit für seine eigenen Karten)
           cardElement.classList.toggle('eliminated');
         }
       }
     }
 
     function processPlayerFinish(data) {
-      // Entferne aus aktiven Spielern
       activePlayers = activePlayers.filter(name => name !== data.name);
       
       if (!ranking.find(r => r.name === data.name)) {
@@ -769,9 +774,7 @@
         }
       }
 
-      // Check ob Spiel vorbei ist (nur noch 1 oder 0 Spieler aktiv)
       if (activePlayers.length <= 1) {
-        // Letzten verbleibenden Spieler automatisch als Verlierer eintragen
         if (activePlayers.length === 1) {
           const lastPlayer = activePlayers[0];
           if (!ranking.find(r => r.name === lastPlayer)) {
@@ -810,7 +813,7 @@
       document.getElementById('opponent-target-display').style.display = 'none';
       document.getElementById('board').innerHTML = '';
       
-      cardIGuess = null; cardToDefend = null; myAssignment = null;
+      cardIGuess = null; cardToDefend = null; myAssignment = null; globalAssignments = [];
       selectionsReady = 0; gamePhase = 'waiting';
       activePlayers = []; ranking = []; isGuessingMode = false;
       
